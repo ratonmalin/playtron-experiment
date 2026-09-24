@@ -97,6 +97,11 @@ export class VisualEngine {
         return ((safeNote - 48) * 27.6923076923 + 195) % 360;
     }
 
+    getNoteProfile(note) {
+        const safeNote = Number.isFinite(note) ? note : 60;
+        return Math.min(1, Math.max(0, (safeNote - 60) / 16));
+    }
+
     onNoteOn(event) {
         if (!event || !Number.isFinite(event.note)) return;
 
@@ -282,6 +287,7 @@ export class VisualEngine {
 
         for (const item of items) {
             const age = (now - item.born) / 1000;
+            const noteProfile = this.getNoteProfile(item.note);
             const baseX =
                 innerWidth * (0.5 + Math.sin(item.note * 1.73) * 0.25);
             const baseY =
@@ -331,7 +337,8 @@ export class VisualEngine {
 
                 const speed = Math.hypot(item.vx, item.vy);
                 const maxSpeed =
-                    count >= 4 ? 180 : 145;
+                    (count >= 4 ? 150 : 120) +
+                    noteProfile * (count >= 4 ? 90 : 70);
 
                 if (speed > maxSpeed) {
                     item.vx =
@@ -366,27 +373,51 @@ export class VisualEngine {
                     if (index !== -1 && ordered.length >= 2) {
                         const centerX = center.x;
                         const centerY = center.y;
-                        const rotation = elapsed * 0.055;
-                        const radiusX = Math.min(innerWidth * 0.22, 190 + ordered.length * 12);
-                        const radiusY = radiusX * 0.68;
+                        const rotation =
+                            elapsed * (0.04 + noteProfile * 0.055);
+                        const radiusBase =
+                            Math.min(
+                                innerWidth * 0.22,
+                                190 + ordered.length * 12
+                            );
+                        const radiusX =
+                            radiusBase *
+                            (0.72 + noteProfile * 0.56);
+                        const radiusY = radiusX * (0.68 + noteProfile * 0.08);
                         let targetX = centerX;
                         let targetY = centerY;
 
                         if (ordered.length === 2) {
-                            const angle = index === 0 ? Math.PI : 0;
+                            const angle =
+                                (index === 0 ? Math.PI : 0) +
+                                noteProfile * Math.PI * 0.35;
                             targetX = centerX + Math.cos(angle + rotation) * radiusX;
                             targetY = centerY + Math.sin(angle + rotation) * radiusY;
                         } else if (ordered.length === 3) {
-                            const angle = rotation - Math.PI / 2 + index * (Math.PI * 2 / 3);
+                            const angle =
+                                rotation -
+                                Math.PI / 2 +
+                                index * (Math.PI * 2 / 3) +
+                                noteProfile * Math.PI * 0.18;
                             targetX = centerX + Math.cos(angle) * radiusX;
                             targetY = centerY + Math.sin(angle) * radiusY;
                         } else if (ordered.length === 4) {
-                            const angle = Math.PI / 4 + rotation + index * (Math.PI / 2);
+                            const angle =
+                                Math.PI / 4 +
+                                rotation +
+                                index * (Math.PI / 2) +
+                                noteProfile * Math.PI * 0.16;
                             targetX = centerX + Math.cos(angle) * radiusX;
                             targetY = centerY + Math.sin(angle) * radiusY;
                         } else {
-                            const angle = rotation * 1.7 + index * (Math.PI * 2 / ordered.length);
-                            const spiralRadius = radiusX * (0.48 + index / Math.max(1, ordered.length - 1) * 0.52);
+                            const angle =
+                                rotation * (1.2 + noteProfile * 1.0) +
+                                index * (Math.PI * 2 / ordered.length) +
+                                noteProfile * 0.35;
+                            const spiralRadius =
+                                radiusX *
+                                (0.42 +
+                                    index / Math.max(1, ordered.length - 1) * 0.58);
                             targetX = centerX + Math.cos(angle) * spiralRadius;
                             targetY = centerY + Math.sin(angle) * spiralRadius * 0.68;
                         }
@@ -492,13 +523,13 @@ export class VisualEngine {
                 item.chaotic = true;
             } else {
                 const orbit =
-                    62 +
-                    (item.note % 7) * 20 +
-                    Math.min(age, 3) * 9;
+                    118 -
+                    noteProfile * 68 +
+                    Math.min(age, 3) * (6 - noteProfile * 2);
 
                 const angle =
                     item.angle +
-                    age * (0.16 + (item.note % 5) * 0.025);
+                    age * (0.085 + noteProfile * 0.22);
 
                 item.x = baseX + Math.cos(angle) * orbit;
                 item.y = baseY + Math.sin(angle) * orbit * 0.62;
