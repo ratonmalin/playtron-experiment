@@ -52,6 +52,7 @@ body {
         );
 }
 
+.scale-button,
 .fullscreen-button {
     padding: 6px 9px;
     border: 1px solid rgba(255, 255, 255, 0.22);
@@ -68,6 +69,14 @@ body {
         background 100ms ease;
 }
 
+.scale-button {
+    min-width: 108px;
+}
+
+.scale-button:hover,
+.scale-button:focus-visible,
+.scale-button:hover,
+.scale-button:focus-visible,
 .fullscreen-button:hover,
 .fullscreen-button:focus-visible {
     color: #ffffff;
@@ -89,6 +98,13 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
 }
 
 .header-info {
