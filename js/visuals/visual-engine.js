@@ -241,14 +241,31 @@ export class VisualEngine {
         let x = 0;
         let y = 0;
 
+        let count = 0;
+
         for (const item of this.active.values()) {
-            x += item.x ?? innerWidth * 0.5;
-            y += item.y ?? innerHeight * 0.47;
+            const itemX = Number.isFinite(item.x)
+                ? item.x
+                : innerWidth * 0.5;
+            const itemY = Number.isFinite(item.y)
+                ? item.y
+                : innerHeight * 0.47;
+
+            x += itemX;
+            y += itemY;
+            count++;
+        }
+
+        if (count === 0) {
+            return {
+                x: innerWidth * 0.5,
+                y: innerHeight * 0.47
+            };
         }
 
         return {
-            x: x / this.active.size,
-            y: y / this.active.size
+            x: x / count,
+            y: y / count
         };
     }
 
