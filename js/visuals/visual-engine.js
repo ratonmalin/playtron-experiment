@@ -16,6 +16,11 @@ export class VisualEngine {
         this.maxActiveBodies = 32;
         this.maxMemoryStars = 180;
         this.lastFrameError = 0;
+        this.sleepCycle = -1;
+        this.sleepParticles = [];
+        this.sleepText = "réveillez-moi";
+        this.sleepStartedAt = 0;
+        this.interactionCount = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
@@ -101,6 +106,8 @@ export class VisualEngine {
         const id = this.getBodyId(event);
 
         this.lastInteraction = now;
+        this.interactionCount++;
+        this.sleepCycle = -1;
 
         const existing = this.active.get(id);
 
@@ -539,52 +546,198 @@ export class VisualEngine {
         }
     }
 
-    drawIdle(ctx, now) {
-        const idle =
-            now - this.lastInteraction > 120000;
+    createSleepParticles(now) {
+        const width = Math.max(1, innerWidth);
+        const height = Math.max(1, innerHeight);
+        const scale = Math.min(1.5, Math.max(0.9, width / 1100));
+        const offscreen = document.createElement("canvas");
+        const offscreenCtx = offscreen.getContext("2d", { willReadFrequently: true });
 
-        const idleMessage =
-            document.getElementById("idle-message");
-
-        if (idleMessage) {
-            idleMessage.classList.toggle("visible", idle);
+        if (!offscreenCtx) {
+            this.sleepParticles = [];
+            return;
         }
 
-        if (!idle) return;
+        offscreen.width = Math.floor(width);
+        offscreen.height = Math.floor(height);
+        offscreenCtx.clearRect(0, 0, width, height);
+        offscreenCtx.fillStyle = "#ffffff";
+        offscreenCtx.textAlign = "center";
+        offscreenCtx.textBaseline = "middle";
+        offscreenCtx.font =
+            "italic 300 " +
+            Math.round(92 * scale) +
+            "px \"Cormorant Garamond\", Georgia, serif";
 
-        const elapsed = now / 1000;
+        const messages = [
+            "réveillez-moi",
+            "je suis encore là",
+            "écoutez",
+            "réveillez-moi"
+        ];
+
+        this.sleepText = messages[this.interactionCount % messages.length];
+        offscreenCtx.fillText(this.sleepText, width * 0.5, height * 0.5);
+
+        const pixels = offscreenCtx.getImageData(0, 0, width, height).data;
+        const candidates = [];
+        const step = Math.max(5, Math.round(6 / scale));
+
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
+                const alpha = pixels[(y * width + x) * 4 + 3];
+                if (alpha > 150) candidates.push({ x, y });
+            }
+        }
+
+        const maxParticles = 280;
+        const stride = Math.max(1, Math.ceil(candidates.length / maxParticles));
+        const targets = [];
+
+        for (let i = 0; i < candidates.length; i += stride) {
+            targets.push(candidates[i]);
+        }
+
+        this.sleepParticles = targets.map((target, index) => {
+            const angle = index * 2.399963;
+            const radius = 90 + (index % 17) * 24;
+            return {
+                x: width * 0.5 + Math.cos(angle) * radius,
+                y: height * 0.47 + Math.sin(angle) * radius * 0.62,
+                targetX: target.x,
+                targetY: target.y,
+                size: 0.55 + (index % 4) * 0.35,
+                hue: 190 + (index % 11) * 16,
+                phase: index * 0.47,
+                drift: 0.6 + (index % 7) * 0.11
+            };
+        });
+
+        this.sleepStartedAt = now;
+    }
+
+    drawIdle(ctx, now) {
+        const idle = now - this.lastInteraction > 120000;
+
+        if (!idle) {
+            this.sleepCycle = -1;
+            this.sleepParticles = [];
+            return;
+        }
+
+        const elapsed = (now - this.lastInteraction) / 1000;
+        const cycle = Math.floor(elapsed / 34);
+
+        if (cycle !== this.sleepCycle) {
+            this.sleepCycle = cycle;
+            this.createSleepParticles(now);
+        }
+
+        const progress = elapsed % 34;
+        const formation = Math.min(1, Math.max(0, (progress - 1.5) / 8));
+        const formationEase = formation * formation * (3 - 2 * formation);
+        const hold = Math.max(0, Math.min(1, (progress - 10) / 7));
+        const release = Math.max(0, Math.min(1, (progress - 19) / 12));
+        const messageStrength = Math.min(1, formationEase * (1 - release));
+        const lastNote = this.memory.length
+            ? this.memory[this.memory.length - 1].note
+            : 60;
+        const baseHue = this.getNoteHue(lastNote);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+
+        for (const particle of this.sleepParticles) {
+            const breathe = Math.sin(now / 1900 + particle.phase) * 1.8;
+            const driftX = Math.cos(now / 2700 + particle.phase) * particle.drift * (1 - formationEase);
+            const driftY = Math.sin(now / 2300 + particle.phase) * particle.drift * (1 - formationEase);
+            const targetX = particle.targetX + breathe * 0.7;
+            const targetY = particle.targetY + breathe * 0.35;
+            const dispersedX = particle.targetX + Math.cos(particle.phase) * 180 + driftX * 8;
+            const dispersedY = particle.targetY + Math.sin(particle.phase) * 120 + driftY * 8;
+
+            particle.x +=
+                ((targetX * (1 - release) + dispersedX * release) - particle.x) * 0.035;
+            particle.y +=
+                ((targetY * (1 - release) + dispersedY * release) - particle.y) * 0.035;
+
+            const alpha =
+                messageStrength *
+                (0.28 + hold * 0.42) *
+                (0.72 + Math.sin(now / 1300 + particle.phase) * 0.16);
+
+            ctx.beginPath();
+            ctx.arc(
+                particle.x,
+                particle.y,
+                particle.size * (0.9 + hold * 0.25),
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle =
+                "hsla(" +
+                ((baseHue + particle.hue) % 360) +
+                ", 55%, 86%, " +
+                Math.max(0, alpha) +
+                ")";
+            ctx.fill();
+        }
+
+        if (messageStrength > 0.02 && release < 0.92) {
+            const textAlpha = 0.045 * messageStrength;
+            ctx.font =
+                "italic 300 " +
+                Math.round(Math.min(108, Math.max(46, innerWidth * 0.08))) +
+                "px \"Cormorant Garamond\", Georgia, serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
+            ctx.fillStyle =
+                "hsla(" + ((baseHue + 22) % 360) + ", 60%, 78%, " + textAlpha + ")";
+            ctx.fillText(this.sleepText, innerWidth * 0.5 + 1.2, innerHeight * 0.5 - 0.6);
+
+            ctx.fillStyle =
+                "hsla(" + ((baseHue + 320) % 360) + ", 52%, 82%, " + (textAlpha * 0.7) + ")";
+            ctx.fillText(this.sleepText, innerWidth * 0.5 - 0.9, innerHeight * 0.5 + 0.4);
+        }
+
+        const scanAlpha = 0.018 * messageStrength;
+        for (let y = 0; y < innerHeight; y += 7) {
+            ctx.fillStyle = "rgba(210, 225, 245, " + scanAlpha + ")";
+            ctx.fillRect(0, y, innerWidth, 1);
+        }
+
+        ctx.restore();
+
         const points = [];
+        const elapsedAbsolute = now / 1000;
 
         for (let index = 0; index < this.idleBodies.length; index++) {
             const body = this.idleBodies[index];
             const angle =
                 body.angle +
-                elapsed * body.speed +
-                Math.sin(elapsed * 0.13 + body.phase) * 0.20;
-
+                elapsedAbsolute * body.speed +
+                Math.sin(elapsedAbsolute * 0.13 + body.phase) * 0.20;
             const x =
                 innerWidth * (0.08 + (index % 4) * 0.28) +
-                Math.sin(elapsed * 0.11 + body.phase) * 55;
-
+                Math.sin(elapsedAbsolute * 0.11 + body.phase) * 55;
             const y =
                 innerHeight * (0.16 + Math.floor(index / 4) * 0.34) +
                 Math.cos(angle) * 48;
-
             const alpha =
-                0.34 +
-                0.10 * Math.sin(elapsed * 0.55 + body.phase);
-
+                (0.34 + 0.10 * Math.sin(elapsedAbsolute * 0.55 + body.phase)) *
+                (1 - messageStrength * 0.72);
             const hue = (205 + body.phase * 58) % 360;
             points.push({ x, y, hue, body, alpha });
 
             ctx.beginPath();
             ctx.arc(x, y, body.size * 8, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 65%, 75%, ${alpha * 0.10})`;
+            ctx.fillStyle = "hsla(" + hue + ", 65%, 75%, " + (alpha * 0.10) + ")";
             ctx.fill();
 
             ctx.beginPath();
             ctx.arc(x, y, body.size * 1.35, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 62%, 82%, ${alpha})`;
+            ctx.fillStyle = "hsla(" + hue + ", 62%, 82%, " + alpha + ")";
             ctx.fill();
         }
 
@@ -594,6 +747,7 @@ export class VisualEngine {
 
             for (let j = 0; j < points.length; j++) {
                 if (i === j) continue;
+
                 const distance = Math.hypot(
                     points[i].x - points[j].x,
                     points[i].y - points[j].y
@@ -611,7 +765,9 @@ export class VisualEngine {
             ctx.moveTo(points[i].x, points[i].y);
             ctx.lineTo(nearest.x, nearest.y);
             ctx.strokeStyle =
-                `rgba(175, 195, 225, ${0.16 * points[i].alpha * (1 - nearestDistance / 360)})`;
+                "rgba(175, 195, 225, " +
+                (0.16 * points[i].alpha * (1 - nearestDistance / 360)) +
+                ")";
             ctx.lineWidth = 0.9;
             ctx.stroke();
         }
