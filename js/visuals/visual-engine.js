@@ -565,9 +565,9 @@ export class VisualEngine {
         offscreenCtx.textAlign = "center";
         offscreenCtx.textBaseline = "middle";
         offscreenCtx.font =
-            "italic 300 " +
+            "500 " +
             Math.round(92 * scale) +
-            "px \"Cormorant Garamond\", Georgia, serif";
+            "px Inter, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif";
 
         const messages = [
             "réveillez-moi",
@@ -598,18 +598,61 @@ export class VisualEngine {
             targets.push(candidates[i]);
         }
 
-        this.sleepParticles = targets.map((target, index) => {
+        const origins = [];
+
+        for (const star of this.memory) {
+            const age = (now - star.born) / 1000;
+            if (age < 120) {
+                origins.push({
+                    x: star.x,
+                    y: star.y
+                });
+            }
+        }
+
+        for (let index = 0; index < this.idleBodies.length; index++) {
+            const body = this.idleBodies[index];
+            const angle =
+                body.angle +
+                (now / 1000) * body.speed +
+                Math.sin((now / 1000) * 0.13 + body.phase) * 0.20;
+
+            origins.push({
+                x:
+                    width * (0.08 + (index % 4) * 0.28) +
+                    Math.sin((now / 1000) * 0.11 + body.phase) * 55,
+                y:
+                    height * (0.16 + Math.floor(index / 4) * 0.34) +
+                    Math.cos(angle) * 48
+            });
+        }
+
+        const fallbackCount = Math.max(40, targets.length);
+
+        for (let index = origins.length; index < fallbackCount; index++) {
             const angle = index * 2.399963;
-            const radius = 90 + (index % 17) * 24;
+            const radius = 120 + (index % 19) * 37;
+            origins.push({
+                x: width * 0.5 + Math.cos(angle) * radius * 2.4,
+                y: height * 0.47 + Math.sin(angle) * radius * 1.5
+            });
+        }
+
+        this.sleepParticles = targets.map((target, index) => {
+            const origin = origins[index % origins.length];
             return {
-                x: width * 0.5 + Math.cos(angle) * radius,
-                y: height * 0.47 + Math.sin(angle) * radius * 0.62,
+                x: origin.x,
+                y: origin.y,
+                originX: origin.x,
+                originY: origin.y,
                 targetX: target.x,
                 targetY: target.y,
                 size: 0.55 + (index % 4) * 0.35,
                 hue: 190 + (index % 11) * 16,
                 phase: index * 0.47,
-                drift: 0.6 + (index % 7) * 0.11
+                drift: 0.6 + (index % 7) * 0.11,
+                scatterAngle: index * 2.399963,
+                scatterRadius: 180 + (index % 13) * 22
             };
         });
 
@@ -665,17 +708,41 @@ export class VisualEngine {
             const driftY = Math.sin(now / 2300 + particle.phase) * particle.drift * (1 - formationEase);
             const targetX = particle.targetX + breathe * 0.7;
             const targetY = particle.targetY + breathe * 0.35;
-            const dispersedX = particle.targetX + Math.cos(particle.phase) * 180 + driftX * 8;
-            const dispersedY = particle.targetY + Math.sin(particle.phase) * 120 + driftY * 8;
+            const dispersedX =
+                particle.targetX +
+                Math.cos(particle.scatterAngle) *
+                    particle.scatterRadius +
+                driftX * 8;
+            const dispersedY =
+                particle.targetY +
+                Math.sin(particle.scatterAngle) *
+                    particle.scatterRadius *
+                    0.72 +
+                driftY * 8;
+
+            const formationTargetX =
+                particle.targetX * formationEase +
+                particle.originX * (1 - formationEase);
+            const formationTargetY =
+                particle.targetY * formationEase +
+                particle.originY * (1 - formationEase);
 
             particle.x +=
-                ((targetX * (1 - release) + dispersedX * release) - particle.x) * 0.035;
+                (
+                    formationTargetX * (1 - release) +
+                    dispersedX * release -
+                    particle.x
+                ) * 0.052;
             particle.y +=
-                ((targetY * (1 - release) + dispersedY * release) - particle.y) * 0.035;
+                (
+                    formationTargetY * (1 - release) +
+                    dispersedY * release -
+                    particle.y
+                ) * 0.052;
 
             const alpha =
-                messageStrength *
-                (0.45 + hold * 0.42) *
+                (0.10 + messageStrength * 0.62) *
+                (0.72 + hold * 0.28) *
                 (0.72 + Math.sin(now / 1300 + particle.phase) * 0.16);
 
             ctx.beginPath();
