@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@100&display=swap");
+
 :root {
     --background: #050505;
     --foreground: #ffffff;
@@ -105,12 +107,10 @@ h1 {
     transform: translate(-50%, -50%) scale(0.985);
     color: #ffffff;
     font-family:
-        "Helvetica Neue",
-        Helvetica,
-        Arial,
+        "Roboto",
         sans-serif;
     font-size: clamp(46px, 8vw, 108px);
-    font-weight: 200;
+    font-weight: 100;
     font-style: normal;
     letter-spacing: 0.01em;
     text-transform: lowercase;
