@@ -110,9 +110,9 @@ h1 {
         Arial,
         sans-serif;
     font-size: clamp(46px, 8vw, 108px);
-    font-weight: 300;
+    font-weight: 200;
     font-style: normal;
-    letter-spacing: 0.015em;
+    letter-spacing: 0.01em;
     text-transform: lowercase;
     opacity: 0;
     filter: none;
