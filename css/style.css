@@ -121,7 +121,8 @@ h1 {
 }
 
 .idle-message.visible {
-    opacity: 0.68;
+    visibility: visible;
+    opacity: 0.82;
     transform: translate(-50%, -54%) scale(1);
     animation: idle-breathe 8.5s ease-in-out 7s infinite;
 }
