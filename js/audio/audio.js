@@ -1,105 +1,36 @@
-import { Voice } from "./voice.js";
+const VERSION =
+    new URL(import.meta.url).searchParams.get("v") || "unknown";
+
+console.log("[AUDIO ENGINE] Loaded version:", VERSION);
 
 
-/*
- * =========================================================
- * HARMONIC SCALE
- * =========================================================
- *
- * C major pentatonic:
- *
- * C - D - E - G - A
- *
- * Toutes les notes entrantes sont quantifiées vers
- * cette gamme avant d'être jouées.
- */
+const voiceModule =
+    await import(`./voice.js?v=${VERSION}`);
 
-const PENTATONIC =
-    [0, 2, 4, 7, 9];
-
-
-function quantizeToPentatonic(note) {
-
-    const octave =
-        Math.floor(note / 12);
-
-    const pitchClass =
-        note % 12;
-
-
-    let closest =
-        PENTATONIC[0];
-
-    let smallestDistance =
-        Infinity;
-
-
-    for (
-        const candidate
-        of PENTATONIC
-    ) {
-
-        const distance =
-            Math.abs(
-                candidate - pitchClass
-            );
-
-
-        if (
-            distance <
-            smallestDistance
-        ) {
-
-            smallestDistance =
-                distance;
-
-            closest =
-                candidate;
-        }
-    }
-
-
-    return (
-        octave * 12 +
-        closest
-    );
-}
+const { Voice } = voiceModule;
 
 
 export class AudioEngine {
 
     constructor(eventBus) {
 
-        this.eventBus =
-            eventBus;
+        this.eventBus = eventBus;
 
-        this.audioContext =
-            null;
+        this.audioContext = null;
 
-        this.masterGain =
-            null;
+        this.masterGain = null;
+        this.compressor = null;
 
-        this.compressor =
-            null;
+        this.reverbInput = null;
+        this.reverb = null;
+        this.reverbGain = null;
 
-        this.reverbInput =
-            null;
+        this.activeVoices = new Map();
 
-        this.reverb =
-            null;
-
-        this.reverbGain =
-            null;
-
-        this.activeVoices =
-            new Map();
-
-        this.started =
-            false;
+        this.started = false;
 
         this.handleEvent =
             this.handleEvent.bind(this);
-
 
         eventBus.on(
             "noteon",
@@ -109,6 +40,11 @@ export class AudioEngine {
         eventBus.on(
             "noteoff",
             this.handleEvent
+        );
+
+        console.log(
+            "[AUDIO ENGINE] Constructor version:",
+            VERSION
         );
     }
 
@@ -121,7 +57,6 @@ export class AudioEngine {
                 window.AudioContext ||
                 window.webkitAudioContext;
 
-
             if (!AudioContext) {
 
                 throw new Error(
@@ -129,68 +64,28 @@ export class AudioEngine {
                 );
             }
 
-
             this.audioContext =
                 new AudioContext();
 
 
-            /*
-             * =================================================
-             * MASTER GAIN
-             * =================================================
-             */
-
             this.masterGain =
                 this.audioContext.createGain();
 
-            this.masterGain.gain.value =
-                0.55;
+            this.masterGain.gain.value = 0.55;
 
-
-            /*
-             * =================================================
-             * MASTER COMPRESSOR
-             * =================================================
-             *
-             * Protection légère contre les accumulations
-             * de nombreuses voix.
-             */
 
             this.compressor =
-                this.audioContext
-                    .createDynamicsCompressor();
+                this.audioContext.createDynamicsCompressor();
 
+            this.compressor.threshold.value = -20;
+            this.compressor.knee.value = 25;
+            this.compressor.ratio.value = 2;
+            this.compressor.attack.value = 0.04;
+            this.compressor.release.value = 0.5;
 
-            this.compressor.threshold.value =
-                -20;
-
-            this.compressor.knee.value =
-                25;
-
-            this.compressor.ratio.value =
-                2;
-
-            this.compressor.attack.value =
-                0.04;
-
-            this.compressor.release.value =
-                0.5;
-
-
-            /*
-             * =================================================
-             * REVERB
-             * =================================================
-             */
 
             this.createReverb();
 
-
-            /*
-             * =================================================
-             * OUTPUT
-             * =================================================
-             */
 
             this.masterGain.connect(
                 this.compressor
@@ -222,12 +117,11 @@ export class AudioEngine {
         }
 
 
-        this.started =
-            true;
-
+        this.started = true;
 
         console.log(
-            "[AUDIO ENGINE] Running."
+            "[AUDIO ENGINE] Running version:",
+            VERSION
         );
     }
 
@@ -237,31 +131,12 @@ export class AudioEngine {
         const context =
             this.audioContext;
 
-
-        /*
-         * =================================================
-         * REVERB INPUT
-         * =================================================
-         */
-
         this.reverbInput =
             context.createGain();
 
 
-        /*
-         * =================================================
-         * CONVOLUTION REVERB
-         * =================================================
-         *
-         * On génère une impulse response directement
-         * dans le navigateur.
-         */
-
-        const duration =
-            7.0;
-
-        const decay =
-            3.8;
+        const duration = 7.0;
+        const decay = 3.8;
 
         const sampleRate =
             context.sampleRate;
@@ -301,37 +176,19 @@ export class AudioEngine {
                 const time =
                     i / sampleRate;
 
-
-                /*
-                 * Bruit décroissant.
-                 *
-                 * Les hautes fréquences disparaissent
-                 * progressivement grâce au facteur de decay.
-                 */
-
                 const envelope =
                     Math.pow(
                         1 - time / duration,
                         decay
                     );
 
-
                 const noise =
-                    (
-                        Math.random() * 2
-                    ) - 1;
-
-
-                /*
-                 * Différence légère entre les canaux
-                 * pour créer une impression stéréo.
-                 */
+                    Math.random() * 2 - 1;
 
                 const stereo =
                     channel === 0
                         ? 1
                         : 0.88;
-
 
                 data[i] =
                     noise *
@@ -344,36 +201,19 @@ export class AudioEngine {
         this.reverb =
             context.createConvolver();
 
-
         this.reverb.buffer =
             impulse;
 
 
-        /*
-         * =================================================
-         * REVERB GAIN
-         * =================================================
-         */
-
         this.reverbGain =
             context.createGain();
-
 
         this.reverbGain.gain.value =
             0.62;
 
 
-        /*
-         * =================================================
-         * REVERB FILTER
-         *
-         * On retire une partie des aigus pour obtenir
-         * une reverb chaude plutôt que métallique.
-         */
-
         const reverbFilter =
             context.createBiquadFilter();
-
 
         reverbFilter.type =
             "lowpass";
@@ -384,12 +224,6 @@ export class AudioEngine {
         reverbFilter.Q.value =
             0.25;
 
-
-        /*
-         * =================================================
-         * ROUTING
-         * =================================================
-         */
 
         this.reverbInput.connect(
             this.reverb
@@ -415,21 +249,11 @@ export class AudioEngine {
             return;
         }
 
-
-        if (
-            event.type ===
-            "noteon"
-        ) {
-
+        if (event.type === "noteon") {
             this.noteOn(event);
         }
 
-
-        if (
-            event.type ===
-            "noteoff"
-        ) {
-
+        if (event.type === "noteoff") {
             this.noteOff(event);
         }
     }
@@ -437,52 +261,24 @@ export class AudioEngine {
 
     noteOn(event) {
 
-        /*
-         * La note MIDI originale reste intacte dans
-         * l'EventBus.
-         *
-         * Seule la note utilisée par le moteur sonore
-         * est quantifiée.
-         */
-
-        const audioNote =
-            quantizeToPentatonic(
-                event.note
-            );
-
-
-        /*
-         * Plusieurs entrées peuvent demander la même
-         * note harmonique.
-         *
-         * Pour l'instant, une seule voix est conservée
-         * pour éviter l'accumulation excessive.
-         */
-
-        if (
-            this.activeVoices.has(
-                audioNote
-            )
-        ) {
-
-            return;
-        }
-
-
         const voice =
             new Voice(
                 this.audioContext,
                 this.masterGain,
                 this.reverbInput,
                 {
-                    note: audioNote,
+                    note: event.note,
                     velocity: event.velocity
                 }
             );
 
 
+        const voiceId =
+            `${event.source}-${event.note}-${event.timestamp}`;
+
+
         this.activeVoices.set(
-            audioNote,
+            voiceId,
             voice
         );
 
@@ -493,29 +289,29 @@ export class AudioEngine {
 
     noteOff(event) {
 
-        const audioNote =
-            quantizeToPentatonic(
-                event.note
-            );
+        /*
+         * Pour cette étape, on libère les voix
+         * correspondant à la note reçue.
+         */
 
+        for (
+            const [voiceId, voice]
+            of this.activeVoices
+        ) {
 
-        const voice =
-            this.activeVoices.get(
-                audioNote
-            );
+            if (
+                voice.note === event.note
+            ) {
 
+                voice.release();
 
-        if (!voice) {
-            return;
+                this.activeVoices.delete(
+                    voiceId
+                );
+
+                break;
+            }
         }
-
-
-        voice.release();
-
-
-        this.activeVoices.delete(
-            audioNote
-        );
     }
 
 
@@ -529,7 +325,6 @@ export class AudioEngine {
             voice.release();
         }
 
-
         this.activeVoices.clear();
     }
 
@@ -539,7 +334,6 @@ export class AudioEngine {
         if (!this.audioContext) {
             return;
         }
-
 
         if (
             this.audioContext.state ===
