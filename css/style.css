@@ -195,3 +195,32 @@ h1 {
     }
 
 }
+.controls {
+    margin-bottom: 30px;
+}
+
+button {
+    appearance: none;
+
+    padding: 11px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 5px;
+
+    background: var(--surface);
+    color: var(--foreground);
+
+    font: inherit;
+    font-size: 12px;
+
+    cursor: pointer;
+}
+
+button:hover {
+    background: var(--active);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
