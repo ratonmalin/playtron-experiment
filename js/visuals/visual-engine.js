@@ -19,10 +19,6 @@ export class VisualEngine {
         this.sleepCycle = -1;
         this.sleepMessageIndex = -1;
         this.interactionCount = 0;
-        this.volumeReveal = 0;
-        this.lastVolumeFrame = performance.now();
-        this.volumeGeometry = null;
-        this.lastVolumeBuild = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
@@ -762,181 +758,7 @@ export class VisualEngine {
         return ((phase * 95) % 300 + 300) % 300;
     }
 
-    drawEmergentVolume(ctx, now) {
-        const allItems = [...this.active.values()];
-        const participants = allItems.filter(item =>
-            !item.releasedAt ||
-            (item.releaseLife ?? 0) > 0.02
-        );
 
-        if (!this.volumeGeometry && participants.length < 2) return;
-
-        const activeParticipants = participants
-            .filter(item => !item.releasedAt)
-            .sort((a, b) => a.note - b.note);
-
-        // The object is built from the paths the bodies actually travelled.
-        // We keep the last geometry alive after release so it dissolves
-        // instead of disappearing on the same frame as the notes.
-        if (activeParticipants.length >= 2 && now - this.lastVolumeBuild > 90) {
-            const source = activeParticipants
-                .filter(item => item.trail?.length >= 3);
-
-            if (source.length >= 2) {
-                const usableLength = Math.min(
-                    32,
-                    ...source.map(item => item.trail.length)
-                );
-
-                const rings = [];
-                const startIndex = source.reduce(
-                    (max, item) => Math.max(max, item.trail.length - usableLength),
-                    0
-                );
-
-                for (let step = 0; step < usableLength; step++) {
-                    const ring = [];
-
-                    for (const item of source) {
-                        const index = Math.min(
-                            item.trail.length - 1,
-                            startIndex + step
-                        );
-                        const point = item.trail[index];
-                        if (!point) continue;
-                        ring.push({ x: point.x, y: point.y });
-                    }
-
-                    if (ring.length >= 2) rings.push(ring);
-                }
-
-                if (rings.length >= 3) {
-                    this.volumeGeometry = rings;
-                    this.lastVolumeBuild = now;
-                }
-            }
-        }
-
-        if (!this.volumeGeometry || this.volumeGeometry.length < 3) return;
-
-        const targetReveal = activeParticipants.length >= 2
-            ? Math.min(1, Math.max(0, (this.volumeGeometry.length - 3) / 25))
-            : 0;
-
-        const dt = Math.min(
-            0.05,
-            Math.max(0.001, (now - (this.lastVolumeFrame ?? now)) / 1000)
-        );
-        this.lastVolumeFrame = now;
-
-        const smoothing = 1 - Math.exp(-dt / 2.6);
-        this.volumeReveal =
-            (this.volumeReveal ?? 0) +
-            (targetReveal - (this.volumeReveal ?? 0)) * smoothing;
-
-        const reveal = this.volumeReveal;
-        if (reveal < 0.003) {
-            if (activeParticipants.length < 2) this.volumeGeometry = null;
-            return;
-        }
-
-        const rings = this.volumeGeometry;
-        const renderStep = Math.max(2, Math.ceil(rings.length / 14));
-        const center = rings.reduce(
-            (sum, ring) => {
-                for (const point of ring) {
-                    sum.x += point.x;
-                    sum.y += point.y;
-                    sum.count++;
-                }
-                return sum;
-            },
-            { x: 0, y: 0, count: 0 }
-        );
-
-        if (!center.count) return;
-        center.x /= center.count;
-        center.y /= center.count;
-
-        const depth = 18 + reveal * 72;
-        const depthPhase = now / 1000 * 0.18;
-        const frontScale = 1;
-        const backScale = 0.82 + reveal * 0.08;
-
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-
-        // Each sampled trajectory becomes a longitudinal edge. Connecting
-        // equal moments in those trajectories creates a real surface from
-        // the movement, rather than imposing a triangle/square/spiral.
-        for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += renderStep) {
-            const a = rings[ringIndex];
-            const b = rings[ringIndex + 1];
-            const count = Math.min(a.length, b.length);
-
-            for (let i = 0; i < count; i++) {
-                const p1 = a[i];
-                const p2 = b[i];
-                const local = ringIndex / Math.max(1, rings.length - 1);
-                const fade = 0.25 + 0.75 * Math.sin(local * Math.PI);
-                const alpha = (0.018 + reveal * 0.14) * fade;
-
-                ctx.beginPath();
-                ctx.moveTo(p1.x, p1.y);
-                ctx.lineTo(p2.x, p2.y);
-                ctx.strokeStyle = `rgba(220, 235, 255, ${alpha})`;
-                ctx.lineWidth = 0.55 + reveal * 0.8;
-                ctx.stroke();
-            }
-        }
-
-        const drawLayer = (scale, offsetX, offsetY, alphaMultiplier) => {
-            for (let ringIndex = 0; ringIndex < rings.length; ringIndex += renderStep) {
-                const ring = rings[ringIndex];
-                if (ring.length < 2) continue;
-
-                ctx.beginPath();
-                for (let i = 0; i < ring.length; i++) {
-                    const point = ring[i];
-                    const x = center.x + (point.x - center.x) * scale + offsetX;
-                    const y = center.y + (point.y - center.y) * scale + offsetY;
-                    if (i === 0) ctx.moveTo(x, y);
-                    else ctx.lineTo(x, y);
-                }
-
-                const alpha = (0.012 + reveal * 0.105) * alphaMultiplier;
-                ctx.strokeStyle = `rgba(205, 225, 255, ${alpha})`;
-                ctx.lineWidth = 0.7 + reveal * 0.65;
-                ctx.stroke();
-            }
-        };
-
-        // A second, slightly displaced copy supplies the depth cue. Its
-        // motion is slow enough to read as volume, not as a separate shape.
-        const offsetX = Math.cos(depthPhase) * depth;
-        const offsetY = Math.sin(depthPhase) * depth * 0.38;
-        drawLayer(backScale, -offsetX, -offsetY, 0.48);
-        drawLayer(frontScale, 0, 0, 1);
-
-        // Connect selected corresponding trajectory points through depth.
-        const stride = Math.max(renderStep, Math.floor(rings.length / 7));
-        for (let ringIndex = 0; ringIndex < rings.length; ringIndex += stride) {
-            const ring = rings[ringIndex];
-            for (const point of ring) {
-                const backX = center.x + (point.x - center.x) * backScale - offsetX;
-                const backY = center.y + (point.y - center.y) * backScale - offsetY;
-
-                ctx.beginPath();
-                ctx.moveTo(point.x, point.y);
-                ctx.lineTo(backX, backY);
-                ctx.strokeStyle = `rgba(190, 220, 255, ${0.012 + reveal * 0.055})`;
-                ctx.lineWidth = 0.5 + reveal * 0.45;
-                ctx.stroke();
-            }
-        }
-
-        ctx.restore();
-    }
     drawActiveBodies(ctx, now) {
         const items = [...this.active.values()];
         const liveItems = items.filter(item => !item.releasedAt);
@@ -1312,7 +1134,6 @@ export class VisualEngine {
             this.updateActiveBodies(now);
             this.drawIdle(ctx, now);
             this.drawMemory(ctx, now);
-            this.drawEmergentVolume(ctx, now);
             this.drawActiveBodies(ctx, now);
 
             this.lastFrameError = 0;
