@@ -1,522 +1,464 @@
-export class Voice {
+const VERSION =
+    new URL(import.meta.url).searchParams.get("v") || "unknown";
 
-    constructor(
-        audioContext,
-        destination,
-        reverbInput,
-        { note, velocity }
-    ) {
-        this.audioContext = audioContext;
-        this.destination = destination;
-        this.reverbInput = reverbInput;
+console.log("[AUDIO ENGINE] Loaded version:", VERSION);
 
-        this.note = note;
-        this.velocity = velocity;
+const voiceModule =
+    await import(`./voice.js?v=${VERSION}`);
 
-        this.oscillatorA = null;
-        this.oscillatorB = null;
-        this.oscillatorC = null;
-        this.oscillatorD = null;
+const { Voice } = voiceModule;
 
-        this.filter = null;
-        this.gain = null;
-        this.reverbSend = null;
-        this.panner = null;
 
-        this.lfo = null;
-        this.lfoGain = null;
+/*
+ * VOICING HARMONIQUE
+ *
+ * Les notes sont volontairement très espacées.
+ *
+ * C2  = 36
+ * G2  = 43
+ * E3  = 52
+ * A3  = 57
+ * G4  = 67
+ * C5  = 72
+ * E5  = 76
+ * A5  = 81
+ * C6  = 84
+ * G6  = 91
+ * E7  = 100
+ * A7  = 105
+ *
+ * Toutes les notes appartiennent à une couleur
+ * C majeur / Am6-9 très ouverte.
+ *
+ * L'objectif n'est plus de reproduire
+ * exactement la hauteur MIDI entrante :
+ * le MIDI devient un contrôleur de voix.
+ */
 
-        this.filterLfo = null;
-        this.filterLfoGain = null;
+const HARMONIC_VOICING = [
+    36,
+    43,
+    52,
+    57,
+    67,
+    72,
+    76,
+    81,
+    84,
+    91,
+    100,
+    105
+];
 
-        this.isReleased = false;
-        this.releaseTimer = null;
+
+function getHarmonicNote(midiNote) {
+
+    /*
+     * On utilise la note MIDI comme index
+     * dans le voicing.
+     *
+     * Les 12 touches du clavier correspondent
+     * donc aux 12 positions harmoniques.
+     */
+
+    const index =
+        ((midiNote - 60) % HARMONIC_VOICING.length
+            + HARMONIC_VOICING.length)
+        % HARMONIC_VOICING.length;
+
+    return HARMONIC_VOICING[index];
+}
+
+
+export class AudioEngine {
+
+    constructor(eventBus) {
+
+        this.eventBus = eventBus;
+
+        this.audioContext = null;
+
+        this.masterGain = null;
+        this.compressor = null;
+
+        this.reverbInput = null;
+        this.reverb = null;
+        this.reverbGain = null;
+
+        this.activeVoices = new Map();
+
+        this.started = false;
+
+        this.handleEvent =
+            this.handleEvent.bind(this);
+
+        eventBus.on(
+            "noteon",
+            this.handleEvent
+        );
+
+        eventBus.on(
+            "noteoff",
+            this.handleEvent
+        );
+
+        console.log(
+            "[AUDIO ENGINE] Constructor version:",
+            VERSION
+        );
     }
 
 
-    start() {
+    async start() {
 
-        const context = this.audioContext;
-        const now = context.currentTime;
+        if (!this.audioContext) {
 
-        const frequency =
-            440 * Math.pow(
+            const AudioContext =
+                window.AudioContext ||
+                window.webkitAudioContext;
+
+            if (!AudioContext) {
+                throw new Error(
+                    "Web Audio API indisponible."
+                );
+            }
+
+            this.audioContext =
+                new AudioContext();
+
+
+            /*
+             * MASTER
+             */
+
+            this.masterGain =
+                this.audioContext.createGain();
+
+            this.masterGain.gain.value =
+                0.42;
+
+
+            /*
+             * COMPRESSEUR TRÈS LÉGER
+             */
+
+            this.compressor =
+                this.audioContext
+                    .createDynamicsCompressor();
+
+            this.compressor.threshold.value =
+                -24;
+
+            this.compressor.knee.value =
+                30;
+
+            this.compressor.ratio.value =
+                1.5;
+
+            this.compressor.attack.value =
+                0.08;
+
+            this.compressor.release.value =
+                1.2;
+
+
+            this.createReverb();
+
+
+            this.masterGain.connect(
+                this.compressor
+            );
+
+            this.compressor.connect(
+                this.audioContext.destination
+            );
+        }
+
+
+        if (
+            this.audioContext.state ===
+            "suspended"
+        ) {
+
+            await this.audioContext.resume();
+        }
+
+
+        if (
+            this.audioContext.state !==
+            "running"
+        ) {
+
+            throw new Error(
+                `AudioContext state: ${this.audioContext.state}`
+            );
+        }
+
+
+        this.started = true;
+
+        console.log(
+            "[AUDIO ENGINE] Running version:",
+            VERSION
+        );
+    }
+
+
+    createReverb() {
+
+        const context =
+            this.audioContext;
+
+        this.reverbInput =
+            context.createGain();
+
+
+        /*
+         * REVERB TRÈS LONGUE
+         */
+
+        const duration = 14.0;
+        const decay = 4.5;
+
+        const sampleRate =
+            context.sampleRate;
+
+        const length =
+            Math.floor(
+                sampleRate * duration
+            );
+
+
+        const impulse =
+            context.createBuffer(
                 2,
-                (this.note - 69) / 12
+                length,
+                sampleRate
             );
+
+
+        for (
+            let channel = 0;
+            channel < 2;
+            channel++
+        ) {
+
+            const data =
+                impulse.getChannelData(
+                    channel
+                );
+
+
+            for (
+                let i = 0;
+                i < length;
+                i++
+            ) {
+
+                const time =
+                    i / sampleRate;
+
+
+                const envelope =
+                    Math.pow(
+                        1 - time / duration,
+                        decay
+                    );
+
+
+                /*
+                 * Diffusion légèrement irrégulière
+                 * pour éviter un decay trop artificiel.
+                 */
+
+                const noise =
+                    Math.random() * 2 - 1;
+
+
+                const stereo =
+                    channel === 0
+                        ? 1
+                        : 0.92;
+
+
+                data[i] =
+                    noise *
+                    envelope *
+                    stereo;
+            }
+        }
+
+
+        this.reverb =
+            context.createConvolver();
+
+        this.reverb.buffer =
+            impulse;
+
+
+        this.reverbGain =
+            context.createGain();
+
+        /*
+         * Beaucoup plus de signal wet.
+         */
+
+        this.reverbGain.gain.value =
+            0.92;
 
 
         /*
-         * COUCHE PRINCIPALE
+         * Filtre de la reverb :
+         * on retire les aigus agressifs.
          */
 
-        this.oscillatorA =
-            context.createOscillator();
-
-        this.oscillatorA.type = "sine";
-
-        this.oscillatorA.frequency
-            .setValueAtTime(
-                frequency,
-                now
-            );
-
-
-        /*
-         * COUCHE LÉGÈREMENT DÉSACCORDÉE
-         *
-         * Donne de la largeur sans créer
-         * un effet de synthé agressif.
-         */
-
-        this.oscillatorB =
-            context.createOscillator();
-
-        this.oscillatorB.type = "sine";
-
-        this.oscillatorB.frequency
-            .setValueAtTime(
-                frequency,
-                now
-            );
-
-        this.oscillatorB.detune
-            .setValueAtTime(
-                5,
-                now
-            );
-
-
-        /*
-         * OCTAVE SUPÉRIEURE
-         *
-         * Très faible niveau : elle apporte
-         * la sensation de lumière.
-         */
-
-        this.oscillatorC =
-            context.createOscillator();
-
-        this.oscillatorC.type = "sine";
-
-        this.oscillatorC.frequency
-            .setValueAtTime(
-                frequency * 2,
-                now
-            );
-
-        this.oscillatorC.detune
-            .setValueAtTime(
-                -4,
-                now
-            );
-
-
-        /*
-         * QUINZIÈME SUPÉRIEURE
-         *
-         * Encore plus discrète.
-         * C'est cette couche qui donne
-         * davantage de présence "céleste".
-         */
-
-        this.oscillatorD =
-            context.createOscillator();
-
-        this.oscillatorD.type = "sine";
-
-        this.oscillatorD.frequency
-            .setValueAtTime(
-                frequency * 4,
-                now
-            );
-
-        this.oscillatorD.detune
-            .setValueAtTime(
-                3,
-                now
-            );
-
-
-        /*
-         * FILTRE DOUX
-         */
-
-        this.filter =
+        const reverbFilter =
             context.createBiquadFilter();
 
-        this.filter.type = "lowpass";
+        reverbFilter.type =
+            "lowpass";
 
-        this.filter.frequency
-            .setValueAtTime(
-                1800,
-                now
-            );
+        reverbFilter.frequency.value =
+            2600;
 
-        this.filter.Q
-            .setValueAtTime(
-                0.2,
-                now
-            );
+        reverbFilter.Q.value =
+            0.2;
 
 
-        /*
-         * OUVERTURE LENTE DU FILTRE
-         */
-
-        this.filterLfo =
-            context.createOscillator();
-
-        this.filterLfoGain =
-            context.createGain();
-
-        this.filterLfo.type = "sine";
-
-        this.filterLfo.frequency
-            .setValueAtTime(
-                0.045,
-                now
-            );
-
-        this.filterLfoGain.gain
-            .setValueAtTime(
-                650,
-                now
-            );
-
-        this.filterLfo.connect(
-            this.filterLfoGain
+        this.reverbInput.connect(
+            this.reverb
         );
 
-        this.filterLfoGain.connect(
-            this.filter.frequency
+        this.reverb.connect(
+            reverbFilter
         );
 
-
-        /*
-         * MICRO-MOUVEMENT DE HAUTEUR
-         */
-
-        this.lfo =
-            context.createOscillator();
-
-        this.lfoGain =
-            context.createGain();
-
-        this.lfo.type = "sine";
-
-        this.lfo.frequency
-            .setValueAtTime(
-                0.07,
-                now
-            );
-
-        this.lfoGain.gain
-            .setValueAtTime(
-                1.2,
-                now
-            );
-
-        this.lfo.connect(
-            this.lfoGain
+        reverbFilter.connect(
+            this.reverbGain
         );
 
-        this.lfoGain.connect(
-            this.oscillatorA.detune
+        this.reverbGain.connect(
+            this.masterGain
         );
-
-        this.lfoGain.connect(
-            this.oscillatorB.detune
-        );
-
-        this.lfoGain.connect(
-            this.oscillatorC.detune
-        );
-
-        this.lfoGain.connect(
-            this.oscillatorD.detune
-        );
-
-
-        /*
-         * ENVELOPPE
-         */
-
-        this.gain =
-            context.createGain();
-
-        const peakGain =
-            0.065 * this.velocity;
-
-
-        this.gain.gain
-            .setValueAtTime(
-                0.0001,
-                now
-            );
-
-
-        /*
-         * ATTAQUE :
-         * beaucoup plus rapide que précédemment.
-         */
-
-        this.gain.gain
-            .exponentialRampToValueAtTime(
-                Math.max(
-                    peakGain,
-                    0.0002
-                ),
-                now + 0.45
-            );
-
-
-        /*
-         * PANORAMIQUE
-         */
-
-        this.panner =
-            context.createStereoPanner();
-
-        const pan =
-            ((this.note % 12) / 11) * 0.55 - 0.275;
-
-        this.panner.pan
-            .setValueAtTime(
-                pan,
-                now
-            );
-
-
-        /*
-         * REVERB
-         */
-
-        this.reverbSend =
-            context.createGain();
-
-        this.reverbSend.gain
-            .setValueAtTime(
-                0.95,
-                now
-            );
-
-
-        /*
-         * ROUTING
-         */
-
-        this.oscillatorA.connect(
-            this.filter
-        );
-
-        this.oscillatorB.connect(
-            this.filter
-        );
-
-        this.oscillatorC.connect(
-            this.filter
-        );
-
-        this.oscillatorD.connect(
-            this.filter
-        );
-
-
-        this.filter.connect(
-            this.gain
-        );
-
-
-        /*
-         * SIGNAL DIRECT
-         */
-
-        this.gain.connect(
-            this.panner
-        );
-
-        this.panner.connect(
-            this.destination
-        );
-
-
-        /*
-         * SIGNAL RÉVERBÉRÉ
-         */
-
-        this.gain.connect(
-            this.reverbSend
-        );
-
-        this.reverbSend.connect(
-            this.reverbInput
-        );
-
-
-        /*
-         * DÉMARRAGE
-         */
-
-        this.lfo.start(now);
-        this.filterLfo.start(now);
-
-        this.oscillatorA.start(now);
-        this.oscillatorB.start(now);
-        this.oscillatorC.start(now);
-        this.oscillatorD.start(now);
     }
 
 
-    release() {
+    handleEvent(event) {
 
-        if (this.isReleased) {
+        if (!this.started) {
             return;
         }
 
-        this.isReleased = true;
+        if (event.type === "noteon") {
+            this.noteOn(event);
+        }
 
-        const context = this.audioContext;
-        const now = context.currentTime;
-
-        const currentGain =
-            Math.max(
-                this.gain.gain.value,
-                0.0001
-            );
-
-
-        this.gain.gain
-            .cancelScheduledValues(now);
-
-        this.gain.gain
-            .setValueAtTime(
-                currentGain,
-                now
-            );
-
-
-        /*
-         * LONGUE DISPARITION
-         */
-
-        this.gain.gain
-            .exponentialRampToValueAtTime(
-                0.0001,
-                now + 10
-            );
-
-
-        this.oscillatorA.stop(
-            now + 10.1
-        );
-
-        this.oscillatorB.stop(
-            now + 10.1
-        );
-
-        this.oscillatorC.stop(
-            now + 10.1
-        );
-
-        this.oscillatorD.stop(
-            now + 10.1
-        );
-
-        this.lfo.stop(
-            now + 10.1
-        );
-
-        this.filterLfo.stop(
-            now + 10.1
-        );
-
-
-        this.releaseTimer =
-            window.setTimeout(
-                () => {
-                    this.disconnect();
-                },
-                10500
-            );
+        if (event.type === "noteoff") {
+            this.noteOff(event);
+        }
     }
 
 
-    disconnect() {
+    noteOn(event) {
 
-        if (this.releaseTimer !== null) {
+        const audioNote =
+            getHarmonicNote(event.note);
 
-            clearTimeout(
-                this.releaseTimer
-            );
 
-            this.releaseTimer = null;
+        /*
+         * Chaque note MIDI possède désormais
+         * une place précise dans le voicing.
+         */
+
+        const voiceId =
+            `${event.source}-${event.note}`;
+
+
+        /*
+         * Si la même touche est maintenue,
+         * on ne crée pas plusieurs voix.
+         */
+
+        if (
+            this.activeVoices.has(voiceId)
+        ) {
+            return;
         }
 
 
-        try {
-            this.oscillatorA?.disconnect();
-        } catch {}
-
-        try {
-            this.oscillatorB?.disconnect();
-        } catch {}
-
-        try {
-            this.oscillatorC?.disconnect();
-        } catch {}
-
-        try {
-            this.oscillatorD?.disconnect();
-        } catch {}
-
-        try {
-            this.filter?.disconnect();
-        } catch {}
-
-        try {
-            this.gain?.disconnect();
-        } catch {}
-
-        try {
-            this.reverbSend?.disconnect();
-        } catch {}
-
-        try {
-            this.panner?.disconnect();
-        } catch {}
-
-        try {
-            this.lfo?.disconnect();
-        } catch {}
-
-        try {
-            this.lfoGain?.disconnect();
-        } catch {}
-
-        try {
-            this.filterLfo?.disconnect();
-        } catch {}
-
-        try {
-            this.filterLfoGain?.disconnect();
-        } catch {}
+        const voice =
+            new Voice(
+                this.audioContext,
+                this.masterGain,
+                this.reverbInput,
+                {
+                    note: audioNote,
+                    velocity: event.velocity
+                }
+            );
 
 
-        this.oscillatorA = null;
-        this.oscillatorB = null;
-        this.oscillatorC = null;
-        this.oscillatorD = null;
+        this.activeVoices.set(
+            voiceId,
+            voice
+        );
 
-        this.filter = null;
-        this.gain = null;
-        this.reverbSend = null;
-        this.panner = null;
 
-        this.lfo = null;
-        this.lfoGain = null;
+        voice.start();
+    }
 
-        this.filterLfo = null;
-        this.filterLfoGain = null;
+
+    noteOff(event) {
+
+        const voiceId =
+            `${event.source}-${event.note}`;
+
+
+        const voice =
+            this.activeVoices.get(
+                voiceId
+            );
+
+
+        if (!voice) {
+            return;
+        }
+
+
+        voice.release();
+
+        this.activeVoices.delete(
+            voiceId
+        );
+    }
+
+
+    panic() {
+
+        for (
+            const voice
+            of this.activeVoices.values()
+        ) {
+
+            voice.release();
+        }
+
+        this.activeVoices.clear();
+    }
+
+
+    async resume() {
+
+        if (!this.audioContext) {
+            return;
+        }
+
+        if (
+            this.audioContext.state ===
+            "suspended"
+        ) {
+
+            await this.audioContext.resume();
+        }
     }
 }
