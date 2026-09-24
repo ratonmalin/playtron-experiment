@@ -3,36 +3,42 @@ export class Voice {
     constructor(
         audioContext,
         destination,
+        reverbInput,
         { note, velocity }
     ) {
 
         this.audioContext =
             audioContext;
 
-
         this.destination =
             destination;
 
+        this.reverbInput =
+            reverbInput;
 
         this.note =
             note;
 
-
         this.velocity =
             velocity;
 
-
-        this.oscillator =
+        this.oscillatorA =
             null;
 
+        this.oscillatorB =
+            null;
+
+        this.filter =
+            null;
 
         this.gain =
             null;
 
+        this.reverbSend =
+            null;
 
         this.isReleased =
             false;
-
 
         this.releaseTimer =
             null;
@@ -44,7 +50,6 @@ export class Voice {
         const now =
             this.audioContext.currentTime;
 
-
         const frequency =
             440 *
             Math.pow(
@@ -53,26 +58,84 @@ export class Voice {
             );
 
 
-        this.oscillator =
+        /*
+         * =====================================================
+         * OSCILLATORS
+         * =====================================================
+         */
+
+        this.oscillatorA =
+            this.audioContext.createOscillator();
+
+        this.oscillatorB =
             this.audioContext.createOscillator();
 
 
-        this.gain =
-            this.audioContext.createGain();
+        this.oscillatorA.type =
+            "sine";
 
-
-        this.oscillator.type =
+        this.oscillatorB.type =
             "triangle";
 
 
-        this.oscillator.frequency.setValueAtTime(
+        this.oscillatorA.frequency.setValueAtTime(
+            frequency,
+            now
+        );
+
+        this.oscillatorB.frequency.setValueAtTime(
             frequency,
             now
         );
 
 
+        // Très léger désaccordage.
+        this.oscillatorA.detune.setValueAtTime(
+            -4,
+            now
+        );
+
+        this.oscillatorB.detune.setValueAtTime(
+            4,
+            now
+        );
+
+
+        /*
+         * =====================================================
+         * FILTER
+         * =====================================================
+         */
+
+        this.filter =
+            this.audioContext.createBiquadFilter();
+
+        this.filter.type =
+            "lowpass";
+
+        this.filter.frequency.setValueAtTime(
+            1800,
+            now
+        );
+
+        this.filter.Q.setValueAtTime(
+            0.45,
+            now
+        );
+
+
+        /*
+         * =====================================================
+         * VOICE GAIN
+         * =====================================================
+         */
+
+        this.gain =
+            this.audioContext.createGain();
+
         const peakGain =
-            0.18 * this.velocity;
+            0.075 *
+            this.velocity;
 
 
         this.gain.gain.setValueAtTime(
@@ -81,13 +144,57 @@ export class Voice {
         );
 
 
+        /*
+         * Long attack.
+         */
+
         this.gain.gain.exponentialRampToValueAtTime(
-            Math.max(peakGain, 0.0002),
-            now + 0.08
+            Math.max(
+                peakGain,
+                0.0002
+            ),
+            now + 0.45
         );
 
 
-        this.oscillator.connect(
+        /*
+         * =====================================================
+         * REVERB SEND
+         * =====================================================
+         */
+
+        this.reverbSend =
+            this.audioContext.createGain();
+
+        this.reverbSend.gain.setValueAtTime(
+            0.32,
+            now
+        );
+
+
+        /*
+         * =====================================================
+         * AUDIO ROUTING
+         * =====================================================
+         *
+         * oscillator A
+         *       \
+         *        → filter → gain → dry
+         *       /
+         * oscillator B
+         *
+         * gain → reverb send → global reverb
+         */
+
+        this.oscillatorA.connect(
+            this.filter
+        );
+
+        this.oscillatorB.connect(
+            this.filter
+        );
+
+        this.filter.connect(
             this.gain
         );
 
@@ -97,7 +204,25 @@ export class Voice {
         );
 
 
-        this.oscillator.start(
+        this.gain.connect(
+            this.reverbSend
+        );
+
+
+        this.reverbSend.connect(
+            this.reverbInput
+        );
+
+
+        /*
+         * Start.
+         */
+
+        this.oscillatorA.start(
+            now
+        );
+
+        this.oscillatorB.start(
             now
         );
     }
@@ -108,7 +233,6 @@ export class Voice {
         if (this.isReleased) {
             return;
         }
-
 
         this.isReleased =
             true;
@@ -136,14 +260,22 @@ export class Voice {
         );
 
 
+        /*
+         * Long ambient release.
+         */
+
         this.gain.gain.exponentialRampToValueAtTime(
             0.0001,
-            now + 0.8
+            now + 3.5
         );
 
 
-        this.oscillator.stop(
-            now + 0.85
+        this.oscillatorA.stop(
+            now + 3.6
+        );
+
+        this.oscillatorB.stop(
+            now + 3.6
         );
 
 
@@ -152,7 +284,7 @@ export class Voice {
                 () => {
                     this.disconnect();
                 },
-                900
+                3800
             );
     }
 
@@ -167,31 +299,49 @@ export class Voice {
                 this.releaseTimer
             );
 
-
             this.releaseTimer =
                 null;
         }
 
 
         try {
-
-            this.oscillator?.disconnect();
-
+            this.oscillatorA?.disconnect();
         } catch {}
 
 
         try {
-
-            this.gain?.disconnect();
-
+            this.oscillatorB?.disconnect();
         } catch {}
 
 
-        this.oscillator =
+        try {
+            this.filter?.disconnect();
+        } catch {}
+
+
+        try {
+            this.gain?.disconnect();
+        } catch {}
+
+
+        try {
+            this.reverbSend?.disconnect();
+        } catch {}
+
+
+        this.oscillatorA =
             null;
 
+        this.oscillatorB =
+            null;
+
+        this.filter =
+            null;
 
         this.gain =
+            null;
+
+        this.reverbSend =
             null;
     }
 }
