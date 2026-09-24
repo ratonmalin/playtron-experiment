@@ -6,6 +6,7 @@ export class KeyboardInput {
         this.eventBus = eventBus;
 
         this.activeKeys = new Set();
+        this.keyToNote = new Map();
 
         this.handleKeyDown = this.handleKeyDown.bind(this);
         this.handleKeyUp = this.handleKeyUp.bind(this);
