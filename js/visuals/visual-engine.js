@@ -324,6 +324,22 @@ export class VisualEngine {
                     ay += (dy / distance) * force;
                 }
 
+                // A gentle central restoring force keeps the whole
+                // system in the visual field instead of letting momentum
+                // accumulate toward the corners.
+                const fieldCenterX = innerWidth * 0.5;
+                const fieldCenterY = innerHeight * 0.47;
+                const centerDx = fieldCenterX - item.x;
+                const centerDy = fieldCenterY - item.y;
+                const centerDistance = Math.hypot(centerDx, centerDy);
+                const centerForce = 0.028 + Math.min(
+                    0.032,
+                    centerDistance / Math.max(1, Math.min(innerWidth, innerHeight)) * 0.028
+                );
+
+                ax += centerDx * centerForce;
+                ay += centerDy * centerForce;
+
                 // A very slow shared drift keeps the system from becoming
                 // perfectly static when two bodies settle into an orbit.
                 const drift =
