@@ -370,17 +370,40 @@ export class Voice {
             Math.min(1, (this.systemCount - 1) / 4)
         );
 
+        // The audio has distinct physical regimes rather than merely
+        // getting louder as more notes are added.
+        const systemLevel = Math.min(4, this.systemCount - 1);
         const filterDepth =
-            280 + proximity * 360 + complexity * 120;
+            280 +
+            proximity * 420 +
+            systemLevel * 180;
 
         const pitchDepth =
-            1.2 + this.velocity * 0.8 + proximity * 0.7;
+            1.2 +
+            this.velocity * 0.8 +
+            proximity * 1.1 +
+            systemLevel * 0.45;
 
         const upperLayer =
-            0.08 + complexity * 0.035 + proximity * 0.025;
+            0.08 +
+            proximity * 0.08 +
+            systemLevel * 0.055;
 
         const reverbAmount =
-            1.15 + proximity * 0.18 + complexity * 0.08;
+            1.15 +
+            proximity * 0.32 +
+            systemLevel * 0.16;
+
+        const filterRate =
+            0.05 +
+            systemLevel * 0.055 +
+            proximity * 0.025;
+
+        this.filterLfo?.frequency.setTargetAtTime(
+            filterRate,
+            now,
+            1.4
+        );
 
         this.filterLfoGain?.gain.setTargetAtTime(
             filterDepth,
@@ -407,7 +430,9 @@ export class Voice {
         );
 
         const internalDetune =
-            5 + proximity * 2.5;
+            5 +
+            systemLevel * 2.2 +
+            proximity * 3.5;
 
         this.oscillatorB?.detune.setTargetAtTime(
             internalDetune,
