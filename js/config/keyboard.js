@@ -19,23 +19,23 @@ export const KEYBOARD_MAPPING = {
 };
 
 export const MIDI_NOTE_NAMES = [
-    "C",
-    "C#",
-    "D",
-    "D#",
-    "E",
-    "F",
-    "F#",
-    "G",
-    "G#",
-    "A",
-    "A#",
-    "B"
+    "Do",
+    "Do♯",
+    "Ré",
+    "Ré♯",
+    "Mi",
+    "Fa",
+    "Fa♯",
+    "Sol",
+    "Sol♯",
+    "La",
+    "La♯",
+    "Si"
 ];
 
 export function midiToNoteName(midiNote) {
     const noteIndex = midiNote % 12;
     const octave = Math.floor(midiNote / 12) - 1;
 
-    return `${MIDI_NOTE_NAMES[noteIndex]}${octave}`;
+    return `${MIDI_NOTE_NAMES[noteIndex]} ${octave}`;
 }
