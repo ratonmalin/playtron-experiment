@@ -28,20 +28,15 @@ const { AudioEngine } = audioModule;
 const { MidiInput } = midiModule;
 const { VisualEngine } = visualModule;
 
-
 const eventBus = new EventBus();
 const keyboard = new KeyboardInput(eventBus);
 const audioEngine = new AudioEngine(eventBus);
 const midiInput = new MidiInput(eventBus);
 const visualEngine = new VisualEngine(eventBus);
 
-
 const keyboardElement = document.querySelector("#keyboard");
 const mappingElement = document.querySelector("#mapping-list");
 const lastEventElement = document.querySelector("#last-event");
-const statusElement = document.querySelector("#status");
-const engineVersionElement = document.querySelector("#engine-version");
-
 
 const fullscreenButton = document.querySelector("#fullscreen-button");
 
@@ -75,24 +70,13 @@ if (fullscreenButton) {
     updateFullscreenButton();
 }
 
-
-
-
 console.log("[MAIN] Application initialisée.");
 console.log("[MAIN] Version:", VERSION);
 
-
-if (engineVersionElement) {
-    engineVersionElement.textContent = `ENGINE ${VERSION}`;
-}
-
-
 function createKeyboardUI() {
-
     keyboardElement.innerHTML = "";
 
     for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
-
         const element = document.createElement("div");
 
         element.className = "key";
@@ -112,13 +96,10 @@ function createKeyboardUI() {
     }
 }
 
-
 function createMappingUI() {
-
     mappingElement.innerHTML = "";
 
     for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
-
         const element = document.createElement("div");
 
         element.className = "mapping-item";
@@ -134,9 +115,7 @@ function createMappingUI() {
     }
 }
 
-
 function updateKeyboardKey(event) {
-
     if (event.source !== "keyboard") {
         return;
     }
@@ -163,11 +142,8 @@ function updateKeyboardKey(event) {
     }
 }
 
-
 function findKeyForNote(note) {
-
     for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
-
         if (midiNote === note) {
             return key;
         }
@@ -176,9 +152,7 @@ function findKeyForNote(note) {
     return null;
 }
 
-
 function displayEvent(event) {
-
     const noteName = midiToNoteName(event.note);
     const velocity = event.velocity.toFixed(2);
 
@@ -186,28 +160,19 @@ function displayEvent(event) {
         `${event.type} · ${noteName} · MIDI ${event.note} · velocity ${velocity} · ${event.source}`;
 }
 
-
 eventBus.on("noteon", event => {
-
     console.log("[NOTE ON]", event);
 
     updateKeyboardKey(event);
     displayEvent(event);
-
-    if (statusElement && event.type === "noteon") {
-        statusElement.textContent = "LIVE";
-    }
 });
 
-
 eventBus.on("noteoff", event => {
-
     console.log("[NOTE OFF]", event);
 
     updateKeyboardKey(event);
     displayEvent(event);
 });
-
 
 createKeyboardUI();
 createMappingUI();
@@ -215,7 +180,5 @@ createMappingUI();
 keyboard.start();
 midiInput.start();
 visualEngine.start();
-
-statusElement.textContent = "AUDIO READY";
 
 console.log("[MAIN] Prêt.");
