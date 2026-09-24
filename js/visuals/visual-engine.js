@@ -660,7 +660,7 @@ export class VisualEngine {
     }
 
     drawIdle(ctx, now) {
-        const idle = now - this.lastInteraction > 120000;
+        const idle = now - this.lastInteraction > 60000;
         const idleMessage = document.getElementById("idle-message");
 
         if (!idle) {
@@ -675,7 +675,7 @@ export class VisualEngine {
         }
 
         const elapsed = (now - this.lastInteraction) / 1000;
-        const sleepElapsed = Math.max(0, elapsed - 120);
+        const sleepElapsed = Math.max(0, elapsed - 60);
         const cycle = Math.floor(sleepElapsed / 18);
 
         if (cycle !== this.sleepCycle) {
