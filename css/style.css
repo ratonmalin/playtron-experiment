@@ -104,22 +104,22 @@ h1 {
     z-index: 3;
     transform: translate(-50%, -50%);
     color: rgba(235, 242, 255, 0.72);
-    font-size: 10px;
-    font-weight: 400;
+    font-size: clamp(38px, 7vw, 92px);
+    font-weight: 300;
     letter-spacing: 0.16em;
     text-transform: lowercase;
     opacity: 0;
     filter: blur(0.2px);
     transition:
-        opacity 2200ms ease,
-        transform 3200ms ease;
+        opacity 5200ms ease,
+        transform 7000ms cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
     white-space: nowrap;
 }
 
 .idle-message.visible {
-    opacity: 0.72;
-    transform: translate(-50%, -52%);
+    opacity: 0.68;
+    transform: translate(-50%, -54%);
 }
 
 .instrument {
@@ -290,6 +290,12 @@ h1 {
 
     .key-note {
         font-size: 8px;
+    }
+
+    .idle-message {
+        font-size: 36px;
+        letter-spacing: 0.12em;
+        text-align: center;
     }
 
     .technical-footer {
