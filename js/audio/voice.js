@@ -256,7 +256,7 @@ export class Voice {
                     peakGain,
                     0.0002
                 ),
-                now + 0.38
+                now + 0.16
             );
 
 
