@@ -13,6 +13,7 @@ console.log("[MAIN] Engine version:", VERSION);
 const keyboardModule = await import(`./config/keyboard.js?v=${VERSION}`);
 const eventBusModule = await import(`./core/event-bus.js?v=${VERSION}`);
 const keyboardInputModule = await import(`./input/keyboard.js?v=${VERSION}`);
+const touchInputModule = await import(`./input/touch.js?v=${VERSION}`);
 const audioModule = await import(`./audio/audio.js?v=${VERSION}`);
 const midiModule = await import(`./input/midi.js?v=${VERSION}`);
 const visualModule = await import(`./visuals/visual-engine.js?v=${VERSION}`);
@@ -27,6 +28,7 @@ const { ScaleManager } =
 
 const { EventBus } = eventBusModule;
 const { KeyboardInput } = keyboardInputModule;
+const { TouchInput } = touchInputModule;
 const { AudioEngine } = audioModule;
 const { MidiInput } = midiModule;
 const { VisualEngine } = visualModule;
@@ -43,6 +45,11 @@ const scaledInputBus = {
 };
 
 const keyboard = new KeyboardInput(scaledInputBus);
+const touch = new TouchInput(
+    scaledInputBus,
+    keyboardElement,
+    KEYBOARD_MAPPING
+);
 const audioEngine = new AudioEngine(eventBus);
 const midiInput = new MidiInput(scaledInputBus);
 const visualEngine = new VisualEngine(eventBus);
@@ -132,8 +139,13 @@ function createKeyboardUI() {
     }
 }
 
+const activeKeyboardNotes = new Map();
+
 function updateKeyboardKey(event) {
-    if (event.source !== "keyboard") {
+    if (
+        event.source !== "keyboard" &&
+        event.source !== "touch"
+    ) {
         return;
     }
 
@@ -155,11 +167,30 @@ function updateKeyboardKey(event) {
     }
 
     if (event.type === "noteon") {
+        const count =
+            activeKeyboardNotes.get(event.note) || 0;
+
+        activeKeyboardNotes.set(
+            event.note,
+            count + 1
+        );
+
         element.classList.add("active");
     }
 
     if (event.type === "noteoff") {
-        element.classList.remove("active");
+        const count =
+            Math.max(
+                0,
+                (activeKeyboardNotes.get(event.note) || 1) - 1
+            );
+
+        if (count === 0) {
+            activeKeyboardNotes.delete(event.note);
+            element.classList.remove("active");
+        } else {
+            activeKeyboardNotes.set(event.note, count);
+        }
     }
 }
 
@@ -198,6 +229,7 @@ eventBus.on("noteoff", event => {
 createKeyboardUI();
 
 keyboard.start();
+touch.start();
 midiInput.start();
 visualEngine.start();
 
