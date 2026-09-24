@@ -656,8 +656,26 @@ export class VisualEngine {
         if (!idle) {
             this.sleepCycle = -1;
             this.sleepParticles = [];
+            return;
+        }
 
-            const lastNote = this.memory.length
+        const elapsed = (now - this.lastInteraction) / 1000;
+        const sleepElapsed = Math.max(0, elapsed - 30);
+        const cycle = Math.floor(sleepElapsed / 18);
+
+        if (cycle !== this.sleepCycle) {
+            this.sleepCycle = cycle;
+            this.createSleepParticles(now);
+        }
+
+        const progress = sleepElapsed % 18;
+        const formation = Math.min(1, Math.max(0, (progress - 0.8) / 4.2));
+        const formationEase = formation * formation * (3 - 2 * formation);
+        const hold = Math.max(0, Math.min(1, (progress - 5) / 5));
+        const release = Math.max(0, Math.min(1, (progress - 10) / 7));
+        const messageStrength = Math.min(1, formationEase * (1 - release));
+
+        const lastNote = this.memory.length
             ? this.memory[this.memory.length - 1].note
             : 60;
         const baseHue = this.getNoteHue(lastNote);
