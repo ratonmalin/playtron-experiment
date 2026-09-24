@@ -583,9 +583,8 @@ export class VisualEngine {
 
         const messages = [
             "réveillez-moi",
-            "je suis encore là",
-            "je vous attends",
-            "réveillez-moi"
+            "je suis là",
+            "hey"
         ];
 
         this.sleepText = messages[this.interactionCount % messages.length];
