@@ -14,6 +14,8 @@ const keyboardModule = await import(`./config/keyboard.js?v=${VERSION}`);
 const eventBusModule = await import(`./core/event-bus.js?v=${VERSION}`);
 const keyboardInputModule = await import(`./input/keyboard.js?v=${VERSION}`);
 const audioModule = await import(`./audio/audio.js?v=${VERSION}`);
+const midiModule = await import(`./input/midi.js?v=${VERSION}`);
+const visualModule = await import(`./visuals/visual-engine.js?v=${VERSION}`);
 
 const {
     KEYBOARD_MAPPING,
@@ -23,11 +25,15 @@ const {
 const { EventBus } = eventBusModule;
 const { KeyboardInput } = keyboardInputModule;
 const { AudioEngine } = audioModule;
+const { MidiInput } = midiModule;
+const { VisualEngine } = visualModule;
 
 
 const eventBus = new EventBus();
 const keyboard = new KeyboardInput(eventBus);
 const audioEngine = new AudioEngine(eventBus);
+const midiInput = new MidiInput(eventBus);
+const visualEngine = new VisualEngine(eventBus);
 
 
 const keyboardElement = document.querySelector("#keyboard");
@@ -205,6 +211,8 @@ createKeyboardUI();
 createMappingUI();
 
 keyboard.start();
+midiInput.start();
+visualEngine.start();
 
 statusElement.textContent = "AUDIO OFF";
 
