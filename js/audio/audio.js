@@ -96,8 +96,8 @@ export class AudioEngine {
 
         this.reverbInput = context.createGain();
 
-        const duration = 14.0;
-        const decay = 4.5;
+        const duration = 7.0;
+        const decay = 5.5;
         const sampleRate = context.sampleRate;
         const length = Math.floor(sampleRate * duration);
 
@@ -131,7 +131,7 @@ export class AudioEngine {
         this.reverbGain =
             context.createGain();
 
-        this.reverbGain.gain.value = 0.92;
+        this.reverbGain.gain.value = 0.58;
 
         const reverbFilter =
             context.createBiquadFilter();
