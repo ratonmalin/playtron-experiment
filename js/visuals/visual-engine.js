@@ -872,6 +872,16 @@ export class VisualEngine {
     drawActiveBodies(ctx, now) {
         const items = [...this.active.values()];
         const liveItems = items.filter(item => !item.releasedAt);
+        const oldestBorn = liveItems.length
+            ? Math.min(...liveItems.map(item => item.born))
+            : now;
+        const revealAge = Math.max(0, (now - oldestBorn) / 1000);
+        const trailReveal = Math.min(
+            1,
+            Math.max(0, (revealAge - 1.5) / 8)
+        );
+        const trailRevealEase =
+            trailReveal * trailReveal * (3 - 2 * trailReveal);
 
         for (const item of items) {
             const radius =
@@ -930,7 +940,7 @@ export class VisualEngine {
 
                 const trailAlpha = item.releasedAt
                     ? 0.06 * life
-                    : 0.10 * life;
+                    : (0.035 + trailRevealEase * 0.20) * life;
 
                 ctx.strokeStyle =
                     `hsla(${item.hue}, 52%, 76%, ${trailAlpha})`;
