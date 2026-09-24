@@ -157,16 +157,57 @@ h1 {
     position: absolute;
     left: 34px;
     right: 34px;
-    bottom: 26px;
+    bottom: 76px;
     z-index: 2;
     color: #ffffff;
     opacity: 0.72;
 }
 
-.mapping,
-.about,
+.technical-footer {
+    display: block;
+}
+
+.mapping {
+    margin: 0;
+}
+
+.mapping-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+}
+
+.mapping-item {
+    color: #ffffff;
+    font-size: 7px;
+    opacity: 0.55;
+}
+
+.about {
+    display: flex;
+    gap: 18px;
+    margin-top: 5px;
+}
+
+.about-line {
+    display: flex;
+    gap: 5px;
+    color: #ffffff;
+    font-size: 7px;
+    opacity: 0.45;
+}
+
+.about-line span:last-child {
+    color: #ffffff;
+}
+
 .engine-info {
-    display: none;
+    display: block;
+    margin-top: 4px;
+    color: #ffffff;
+    font-size: 7px;
+    opacity: 0.35;
 }
 
 .visual-field {
