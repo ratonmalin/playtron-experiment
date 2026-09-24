@@ -353,3 +353,17 @@ button:active {
         text-align: left;
     }
 }
+
+
+.visual-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.95;
+}
+
+.app {
+    position: relative;
+    z-index: 1;
+}
