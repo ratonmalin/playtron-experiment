@@ -33,10 +33,27 @@ export class ScaleManager {
     }
 
     next() {
+        const releases = [];
+
+        for (const active of this.activeNotes.values()) {
+            releases.push({
+                ...active.event,
+                type: "noteoff",
+                note: active.mappedNote,
+                velocity: 0,
+                rawNote: active.event.note
+            });
+        }
+
+        this.activeNotes.clear();
+
         this.index =
             (this.index + 1) % SCALES.length;
 
-        return this.currentScale;
+        return {
+            scale: this.currentScale,
+            releases
+        };
     }
 
     transform(event) {
@@ -57,7 +74,10 @@ export class ScaleManager {
             const mappedNote =
                 this.quantize(event.note);
 
-            this.activeNotes.set(key, mappedNote);
+            this.activeNotes.set(key, {
+                event,
+                mappedNote
+            });
 
             return {
                 ...event,
@@ -66,8 +86,11 @@ export class ScaleManager {
             };
         }
 
+        const active =
+            this.activeNotes.get(key);
+
         const mappedNote =
-            this.activeNotes.get(key) ??
+            active?.mappedNote ??
             this.quantize(event.note);
 
         this.activeNotes.delete(key);
