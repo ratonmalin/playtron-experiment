@@ -344,7 +344,7 @@ export class AudioEngine {
 
 
         const voiceId =
-            `${event.source}-${event.note}`;
+            `${event.source}-${event.channel}-${event.note}`;
 
 
         if (
@@ -379,7 +379,7 @@ export class AudioEngine {
     noteOff(event) {
 
         const voiceId =
-            `${event.source}-${event.note}`;
+            `${event.source}-${event.channel}-${event.note}`;
 
 
         const voice =
