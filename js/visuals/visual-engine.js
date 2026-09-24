@@ -324,21 +324,56 @@ export class VisualEngine {
                     ay += (dy / distance) * force;
                 }
 
-                // A gentle central restoring force keeps the whole
-                // system in the visual field instead of letting momentum
-                // accumulate toward the corners.
+                // A soft central field keeps the whole system inside
+                // the visual field while still allowing large orbits.
                 const fieldCenterX = innerWidth * 0.5;
                 const fieldCenterY = innerHeight * 0.47;
                 const centerDx = fieldCenterX - item.x;
                 const centerDy = fieldCenterY - item.y;
                 const centerDistance = Math.hypot(centerDx, centerDy);
-                const centerForce = 0.028 + Math.min(
-                    0.032,
-                    centerDistance / Math.max(1, Math.min(innerWidth, innerHeight)) * 0.028
-                );
+                const fieldRadius =
+                    Math.min(innerWidth, innerHeight) * 0.30;
 
-                ax += centerDx * centerForce;
-                ay += centerDy * centerForce;
+                const insideForce = 0.065;
+                ax += centerDx * insideForce;
+                ay += centerDy * insideForce;
+
+                // Once a body crosses the comfortable visual radius, the
+                // restoring field becomes noticeably stronger. This prevents
+                // sustained interactions from turning into screen-wide orbits.
+                if (centerDistance > fieldRadius) {
+                    const excess =
+                        Math.min(
+                            1,
+                            (centerDistance - fieldRadius) /
+                                Math.max(1, fieldRadius)
+                        );
+
+                    const outsideForce =
+                        0.10 + excess * 0.16;
+
+                    ax += centerDx * outsideForce;
+                    ay += centerDy * outsideForce;
+
+                    // Remove a little outward radial momentum at the same
+                    // time, without freezing the tangential orbital motion.
+                    const radialVelocity =
+                        (item.vx * (item.x - fieldCenterX) +
+                            item.vy * (item.y - fieldCenterY)) /
+                        Math.max(1, centerDistance);
+
+                    if (radialVelocity > 0) {
+                        const radialX =
+                            (item.x - fieldCenterX) /
+                            Math.max(1, centerDistance);
+                        const radialY =
+                            (item.y - fieldCenterY) /
+                            Math.max(1, centerDistance);
+
+                        item.vx -= radialX * radialVelocity * 0.10;
+                        item.vy -= radialY * radialVelocity * 0.10;
+                    }
+                }
 
                 // A very slow shared drift keeps the system from becoming
                 // perfectly static when two bodies settle into an orbit.
