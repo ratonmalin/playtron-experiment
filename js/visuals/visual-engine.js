@@ -256,6 +256,42 @@ export class VisualEngine {
     }
 
     drawMemory(ctx, now) {
+        const visibleStars = this.memory.filter(star => {
+            const age = (now - star.born) / 1000;
+            return age < 28;
+        });
+
+        for (let i = Math.max(0, visibleStars.length - 28); i < visibleStars.length; i++) {
+            const a = visibleStars[i];
+            const ageA = (now - a.born) / 1000;
+            const lifeA = Math.max(0, 1 - ageA / 28);
+
+            for (let j = i + 1; j < visibleStars.length; j++) {
+                const b = visibleStars[j];
+                const dx = b.x - a.x;
+                const dy = b.y - a.y;
+                const distance = Math.hypot(dx, dy);
+
+                if (distance > 170) continue;
+
+                const ageB = (now - b.born) / 1000;
+                const lifeB = Math.max(0, 1 - ageB / 28);
+                const alpha =
+                    0.035 *
+                    lifeA *
+                    lifeB *
+                    (1 - distance / 170);
+
+                ctx.beginPath();
+                ctx.moveTo(a.x, a.y);
+                ctx.lineTo(b.x, b.y);
+                ctx.strokeStyle =
+                    `rgba(213, 165, 91, ${alpha})`;
+                ctx.lineWidth = 0.7;
+                ctx.stroke();
+            }
+        }
+
         for (const star of this.memory) {
             const age = (now - star.born) / 1000;
             const life = Math.max(0, 1 - age / 28);
