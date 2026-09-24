@@ -35,7 +35,6 @@ const midiInput = new MidiInput(eventBus);
 const visualEngine = new VisualEngine(eventBus);
 
 const keyboardElement = document.querySelector("#keyboard");
-const mappingElement = document.querySelector("#mapping-list");
 const lastEventElement = document.querySelector("#last-event");
 
 const fullscreenButton = document.querySelector("#fullscreen-button");
@@ -83,35 +82,12 @@ function createKeyboardUI() {
         element.dataset.key = key;
 
         element.innerHTML = `
-            <span class="key-letter">
-                ${key.toUpperCase()}
-            </span>
-
             <span class="key-note">
                 ${midiToNoteName(midiNote)}
             </span>
         `;
 
         keyboardElement.appendChild(element);
-    }
-}
-
-function createMappingUI() {
-    mappingElement.innerHTML = "";
-
-    for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
-        const element = document.createElement("div");
-
-        element.className = "mapping-item";
-
-        element.innerHTML = `
-            <strong>${key.toUpperCase()}</strong>
-            →
-            ${midiToNoteName(midiNote)}
-            <span>(${midiNote})</span>
-        `;
-
-        mappingElement.appendChild(element);
     }
 }
 
@@ -175,7 +151,6 @@ eventBus.on("noteoff", event => {
 });
 
 createKeyboardUI();
-createMappingUI();
 
 keyboard.start();
 midiInput.start();
