@@ -5,10 +5,12 @@ import {
 
 import { EventBus } from "./core/event-bus.js";
 import { KeyboardInput } from "./input/keyboard.js";
+import { AudioEngine } from "./audio/audio.js";
 
 const eventBus = new EventBus();
 
 const keyboard = new KeyboardInput(eventBus);
+const audioEngine = new AudioEngine(eventBus);
 
 const keyboardElement =
     document.querySelector("#keyboard");
@@ -22,13 +24,15 @@ const lastEventElement =
 const statusElement =
     document.querySelector("#status");
 
+
 function createKeyboardUI() {
 
     keyboardElement.innerHTML = "";
 
     for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
 
-        const element = document.createElement("div");
+        const element =
+            document.createElement("div");
 
         element.className = "key";
         element.dataset.key = key;
@@ -47,13 +51,15 @@ function createKeyboardUI() {
     }
 }
 
+
 function createMappingUI() {
 
     mappingElement.innerHTML = "";
 
     for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
 
-        const element = document.createElement("div");
+        const element =
+            document.createElement("div");
 
         element.className = "mapping-item";
 
@@ -67,11 +73,15 @@ function createMappingUI() {
     }
 }
 
+
 function updateKeyboardKey(event) {
 
-    const key = event.source === "keyboard"
-        ? findKeyForNote(event.note)
-        : null;
+    if (event.source !== "keyboard") {
+        return;
+    }
+
+    const key =
+        findKeyForNote(event.note);
 
     if (!key) {
         return;
@@ -95,9 +105,13 @@ function updateKeyboardKey(event) {
     }
 }
 
+
 function findKeyForNote(note) {
 
-    for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
+    for (
+        const [key, midiNote]
+        of Object.entries(KEYBOARD_MAPPING)
+    ) {
         if (midiNote === note) {
             return key;
         }
@@ -105,6 +119,7 @@ function findKeyForNote(note) {
 
     return null;
 }
+
 
 function displayEvent(event) {
 
@@ -118,31 +133,80 @@ function displayEvent(event) {
         `${event.type} · ${noteName} · MIDI ${event.note} · velocity ${velocity} · ${event.source}`;
 }
 
+
 eventBus.on("noteon", event => {
 
-    console.log(
-        "[EVENT]",
-        event
-    );
+    console.log("[EVENT]", event);
 
     updateKeyboardKey(event);
     displayEvent(event);
 });
+
 
 eventBus.on("noteoff", event => {
 
-    console.log(
-        "[EVENT]",
-        event
-    );
+    console.log("[EVENT]", event);
 
     updateKeyboardKey(event);
     displayEvent(event);
 });
+
+
+/*
+ * AudioContext doit être démarré à la suite
+ * d'une interaction utilisateur.
+ *
+ * Le bouton n'est pas encore dans l'interface :
+ * on utilise donc le premier appui clavier.
+ */
+async function ensureAudioStarted() {
+
+    if (audioEngine.started) {
+        return;
+    }
+
+    try {
+
+        await audioEngine.start();
+
+        statusElement.textContent =
+            "AUDIO READY";
+
+    } catch (error) {
+
+        console.error(
+            "Unable to start audio:",
+            error
+        );
+
+        statusElement.textContent =
+            "AUDIO ERROR";
+    }
+}
+
+
+/*
+ * Le clavier reste la source d'événements.
+ *
+ * Avant de jouer une note, on initialise AudioContext.
+ */
+const originalHandleKeyDown =
+    keyboard.handleKeyDown.bind(keyboard);
+
+keyboard.handleKeyDown = async function(event) {
+
+    if (!audioEngine.started) {
+        await ensureAudioStarted();
+    }
+
+    originalHandleKeyDown(event);
+};
+
 
 createKeyboardUI();
 createMappingUI();
 
 keyboard.start();
 
-statusElement.textContent = "KEYBOARD READY";
+statusElement.textContent =
+    "PRESS A KEY";
