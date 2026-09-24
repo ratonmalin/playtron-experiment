@@ -1,12 +1,5 @@
-console.log("MAIN.JS CHARGÉ");
+console.log("================================");
+console.log("MAIN.JS A ÉTÉ CHARGÉ");
+console.log("================================");
 
-const button = document.querySelector("#test-button");
-const result = document.querySelector("#result");
-
-button.addEventListener("click", () => {
-
-    console.log("BOUTON CLIQUÉ");
-
-    result.textContent = "MAIN.JS FONCTIONNE";
-
-});
+alert("MAIN.JS EST CHARGÉ");
