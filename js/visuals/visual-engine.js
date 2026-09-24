@@ -186,6 +186,7 @@ export class VisualEngine {
             phase: (event.note * 0.71) % (Math.PI * 2),
             hue: this.getNoteHue(event.note),
             duration: null,
+            mass: 0.75 + ((event.note % 12) / 11) * 0.55,
             x: innerWidth * (0.5 + Math.sin(event.note * 1.73) * 0.25),
             y: innerHeight * (0.47 + Math.cos(event.note * 1.17) * 0.20),
             vx: Math.cos(event.note * 0.83) * 18,
@@ -281,7 +282,7 @@ export class VisualEngine {
             const baseY =
                 innerHeight * (0.47 + Math.cos(item.note * 1.17) * 0.20);
 
-            if (count >= 3) {
+            if (count >= 2) {
                 const dt = Math.min(
                     0.033,
                     Math.max(0.008, (now - (item.lastFrame ?? now)) / 1000)
@@ -290,33 +291,42 @@ export class VisualEngine {
                 let ax = 0;
                 let ay = 0;
 
+                // Soft n-body gravity: the forms now create each other's
+                // trajectories instead of following independent animations.
                 for (const other of items) {
-                    if (other === item) continue;
+                    if (other === item || other.releasedAt) continue;
 
                     const dx = other.x - item.x;
                     const dy = other.y - item.y;
                     const distanceSq = Math.max(
-                        1800,
+                        2600,
                         dx * dx + dy * dy
                     );
 
                     const distance = Math.sqrt(distanceSq);
                     const force =
-                        1150 /
+                        5200 *
+                        (other.mass ?? 1) /
                         distanceSq;
 
-                    ax += (dx / distance) * force * 100;
-                    ay += (dy / distance) * force * 100;
+                    ax += (dx / distance) * force;
+                    ay += (dy / distance) * force;
                 }
 
-                const pulse =
-                    Math.sin(elapsed * 0.8 + item.phase) * 4;
+                // A very slow shared drift keeps the system from becoming
+                // perfectly static when two bodies settle into an orbit.
+                const drift =
+                    Math.sin(elapsed * 0.32 + item.phase) * 2.4;
 
-                item.vx += (ax + pulse) * dt;
-                item.vy += (ay - pulse * 0.7) * dt;
+                ax += Math.cos(item.phase + elapsed * 0.18) * drift;
+                ay += Math.sin(item.phase + elapsed * 0.18) * drift;
+
+                item.vx += ax * dt;
+                item.vy += ay * dt;
 
                 const speed = Math.hypot(item.vx, item.vy);
-                const maxSpeed = 150;
+                const maxSpeed =
+                    count >= 4 ? 180 : 145;
 
                 if (speed > maxSpeed) {
                     item.vx =
@@ -325,15 +335,17 @@ export class VisualEngine {
                         (item.vy / speed) * maxSpeed;
                 }
 
-                item.vx *= 0.998;
-                item.vy *= 0.998;
+                // Keep enough momentum for visible orbital motion without
+                // letting the system accelerate indefinitely.
+                item.vx *= 0.9992;
+                item.vy *= 0.9992;
 
                 item.x += item.vx * dt;
                 item.y += item.vy * dt;
 
                 // During the first second of a chord, the system briefly
                 // reorganizes itself into a constellation before returning
-                // to its natural chaotic motion.
+                // to its natural orbital motion.
                 if (
                     this.chordStartedAt &&
                     !item.releasedAt
