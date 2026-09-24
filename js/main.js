@@ -1,13 +1,13 @@
 import {
     KEYBOARD_MAPPING,
     midiToNoteName
-} from "./config/keyboard.js";
+} from "./config/keyboard.js?v=4";
 
-import { EventBus } from "./core/event-bus.js";
+import { EventBus } from "./core/event-bus.js?v=4";
 
-import { KeyboardInput } from "./input/keyboard.js";
+import { KeyboardInput } from "./input/keyboard.js?v=4";
 
-import { AudioEngine } from "./audio/audio.js";
+import { AudioEngine } from "./audio/audio.js?v=4";
 
 
 /* =========================================================
