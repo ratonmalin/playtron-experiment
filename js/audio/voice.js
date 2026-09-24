@@ -35,6 +35,9 @@ export class Voice {
         this.isReleased = false;
         this.releaseTimer = null;
         this.startedAt = null;
+
+        this.systemCount = 1;
+        this.nearestDistance = null;
     }
 
 
@@ -346,6 +349,71 @@ export class Voice {
         this.oscillatorA.start(now);
         this.oscillatorB.start(now);
         this.oscillatorC.start(now);
+    }
+
+
+    setSystemState({ count = 1, nearestDistance = null } = {}) {
+        if (!this.audioContext || !this.gain || this.isReleased) {
+            return;
+        }
+
+        this.systemCount = Math.max(1, count);
+        this.nearestDistance = nearestDistance;
+
+        const now = this.audioContext.currentTime;
+        const proximity = Number.isFinite(nearestDistance)
+            ? Math.max(0, Math.min(1, 1 - nearestDistance / 12))
+            : 0;
+
+        const complexity = Math.max(
+            0,
+            Math.min(1, (this.systemCount - 1) / 4)
+        );
+
+        const filterDepth =
+            280 + proximity * 360 + complexity * 120;
+
+        const pitchDepth =
+            1.2 + this.velocity * 0.8 + proximity * 0.7;
+
+        const upperLayer =
+            0.08 + complexity * 0.035 + proximity * 0.025;
+
+        const reverbAmount =
+            1.15 + proximity * 0.18 + complexity * 0.08;
+
+        this.filterLfoGain?.gain.setTargetAtTime(
+            filterDepth,
+            now,
+            1.2
+        );
+
+        this.lfoGain?.gain.setTargetAtTime(
+            pitchDepth,
+            now,
+            1.4
+        );
+
+        this.oscillatorCGain?.gain.setTargetAtTime(
+            upperLayer,
+            now,
+            1.6
+        );
+
+        this.reverbSend?.gain.setTargetAtTime(
+            reverbAmount,
+            now,
+            1.8
+        );
+
+        const internalDetune =
+            5 + proximity * 2.5;
+
+        this.oscillatorB?.detune.setTargetAtTime(
+            internalDetune,
+            now,
+            1.5
+        );
     }
 
 
