@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap");
+
 :root {
     --background: #050505;
     --foreground: #ffffff;
@@ -103,10 +105,12 @@ h1 {
     top: 50%;
     z-index: 3;
     transform: translate(-50%, -50%) scale(0.985);
-    color: rgba(235, 242, 255, 0.72);
-    font-size: clamp(38px, 7vw, 92px);
+    color: rgba(235, 242, 255, 0.78);
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: clamp(46px, 8vw, 108px);
     font-weight: 300;
-    letter-spacing: 0.16em;
+    font-style: italic;
+    letter-spacing: 0.08em;
     text-transform: lowercase;
     opacity: 0;
     filter: blur(0.35px);
@@ -127,12 +131,12 @@ h1 {
     0%,
     100% {
         transform: translate(-50%, -54%) scale(1);
-        letter-spacing: 0.16em;
+        letter-spacing: 0.08em;
     }
 
     50% {
         transform: translate(-50%, -54.8%) scale(1.018);
-        letter-spacing: 0.165em;
+        letter-spacing: 0.085em;
     }
 }
 
@@ -308,7 +312,7 @@ h1 {
 
     .idle-message {
         font-size: 36px;
-        letter-spacing: 0.12em;
+        letter-spacing: 0.05em;
         text-align: center;
     }
 
