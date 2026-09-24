@@ -618,10 +618,16 @@ export class VisualEngine {
 
     drawIdle(ctx, now) {
         const idle = now - this.lastInteraction > 120000;
+        const idleMessage = document.getElementById("idle-message");
 
         if (!idle) {
             this.sleepCycle = -1;
             this.sleepParticles = [];
+
+            if (idleMessage) {
+                idleMessage.classList.remove("visible");
+            }
+
             return;
         }
 
@@ -632,6 +638,11 @@ export class VisualEngine {
         if (cycle !== this.sleepCycle) {
             this.sleepCycle = cycle;
             this.createSleepParticles(now);
+        }
+
+        if (idleMessage) {
+            idleMessage.textContent = this.sleepText;
+            idleMessage.classList.add("visible");
         }
 
         const progress = sleepElapsed % 18;
@@ -684,24 +695,8 @@ export class VisualEngine {
             ctx.fill();
         }
 
-        if (messageStrength > 0.02 && release < 0.92) {
-            const textAlpha = 0.58 * messageStrength;
-            ctx.font =
-                "italic 300 " +
-                Math.round(Math.min(108, Math.max(46, innerWidth * 0.08))) +
-                "px \"Cormorant Garamond\", Georgia, serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-
-            ctx.fillStyle =
-                "hsla(" + ((baseHue + 22) % 360) + ", 60%, 78%, " + textAlpha + ")";
-            ctx.fillText(this.sleepText, innerWidth * 0.5 + 1.2, innerHeight * 0.5 - 0.6);
-
-            ctx.fillStyle =
-                "hsla(" + ((baseHue + 320) % 360) + ", 52%, 82%, " + (textAlpha * 0.7) + ")";
-            ctx.fillText(this.sleepText, innerWidth * 0.5 - 0.9, innerHeight * 0.5 + 0.4);
-        }
-
+        // The sleeping message is rendered by the DOM overlay above the canvas.
+        // Keeping the text out of the particle layer makes its visibility deterministic.
         const scanAlpha = 0.028 * messageStrength;
         for (let y = 0; y < innerHeight; y += 7) {
             ctx.fillStyle = "rgba(210, 225, 245, " + scanAlpha + ")";
