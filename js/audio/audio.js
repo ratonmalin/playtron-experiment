@@ -1,33 +1,46 @@
 import { Voice } from "./voice.js";
 
+
 export class AudioEngine {
 
     constructor(eventBus) {
 
-        this.eventBus = eventBus;
+        this.eventBus =
+            eventBus;
 
-        this.audioContext = null;
-        this.masterGain = null;
 
-        /*
-         * Une note MIDI peut avoir une seule voix
-         * active dans cette première version.
-         *
-         * Exemple :
-         * 60 → Voice
-         * 64 → Voice
-         * 67 → Voice
-         */
-        this.activeVoices = new Map();
+        this.audioContext =
+            null;
+
+
+        this.masterGain =
+            null;
+
+
+        this.activeVoices =
+            new Map();
+
+
+        this.started =
+            false;
+
 
         this.handleEvent =
             this.handleEvent.bind(this);
 
-        this.started = false;
 
-        eventBus.on("noteon", this.handleEvent);
-        eventBus.on("noteoff", this.handleEvent);
+        eventBus.on(
+            "noteon",
+            this.handleEvent
+        );
+
+
+        eventBus.on(
+            "noteoff",
+            this.handleEvent
+        );
     }
+
 
     async start() {
 
@@ -37,65 +50,100 @@ export class AudioEngine {
                 window.AudioContext ||
                 window.webkitAudioContext;
 
+
             if (!AudioContext) {
+
                 throw new Error(
-                    "Web Audio API is not available."
+                    "Web Audio API indisponible."
                 );
+
             }
+
 
             this.audioContext =
                 new AudioContext();
 
+
             this.masterGain =
                 this.audioContext.createGain();
 
-            /*
-             * Volume global volontairement modéré.
-             */
-            this.masterGain.gain.value = 0.7;
+
+            this.masterGain.gain.value =
+                0.7;
+
 
             this.masterGain.connect(
                 this.audioContext.destination
             );
         }
 
-        /*
-         * Important sur les navigateurs qui suspendent
-         * l'AudioContext avant une interaction utilisateur.
-         */
+
         if (
-            this.audioContext.state === "suspended"
+            this.audioContext.state ===
+            "suspended"
         ) {
+
             await this.audioContext.resume();
+
         }
 
-        this.started = true;
+
+        if (
+            this.audioContext.state !==
+            "running"
+        ) {
+
+            throw new Error(
+                `AudioContext state: ${this.audioContext.state}`
+            );
+
+        }
+
+
+        this.started =
+            true;
+
+
+        console.log(
+            "[AUDIO ENGINE] Running."
+        );
     }
 
-    async handleEvent(event) {
+
+    handleEvent(event) {
 
         if (!this.started) {
             return;
         }
 
+
         if (event.type === "noteon") {
+
             this.noteOn(event);
+
         }
 
+
         if (event.type === "noteoff") {
+
             this.noteOff(event);
+
         }
     }
 
+
     noteOn(event) {
 
-        /*
-         * Protection contre un éventuel note-on
-         * répété pour la même note.
-         */
-        if (this.activeVoices.has(event.note)) {
+        if (
+            this.activeVoices.has(
+                event.note
+            )
+        ) {
+
             return;
+
         }
+
 
         const voice =
             new Voice(
@@ -107,38 +155,54 @@ export class AudioEngine {
                 }
             );
 
+
         this.activeVoices.set(
             event.note,
             voice
         );
 
+
         voice.start();
     }
+
 
     noteOff(event) {
 
         const voice =
-            this.activeVoices.get(event.note);
+            this.activeVoices.get(
+                event.note
+            );
+
 
         if (!voice) {
             return;
         }
 
+
         voice.release();
+
 
         this.activeVoices.delete(
             event.note
         );
     }
 
+
     panic() {
 
-        for (const voice of this.activeVoices.values()) {
+        for (
+            const voice
+            of this.activeVoices.values()
+        ) {
+
             voice.release();
+
         }
+
 
         this.activeVoices.clear();
     }
+
 
     async resume() {
 
@@ -146,10 +210,14 @@ export class AudioEngine {
             return;
         }
 
+
         if (
-            this.audioContext.state === "suspended"
+            this.audioContext.state ===
+            "suspended"
         ) {
+
             await this.audioContext.resume();
+
         }
     }
 }
