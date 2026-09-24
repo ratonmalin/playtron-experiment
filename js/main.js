@@ -78,7 +78,13 @@ function updateScaleButton() {
 
 if (scaleButton) {
     scaleButton.addEventListener("click", () => {
-        scaleManager.next();
+        const { releases } =
+            scaleManager.next();
+
+        for (const event of releases) {
+            eventBus.emit(event);
+        }
+
         updateScaleButton();
     });
 
