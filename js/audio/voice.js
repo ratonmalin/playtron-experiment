@@ -22,58 +22,36 @@ export class Voice {
         this.velocity =
             velocity;
 
-        this.oscillatorA =
-            null;
+        this.oscillatorA = null;
+        this.oscillatorB = null;
+        this.oscillatorC = null;
 
-        this.oscillatorB =
-            null;
+        this.filter = null;
 
-        this.oscillatorC =
-            null;
+        this.gain = null;
+        this.reverbSend = null;
 
-        this.filter =
-            null;
+        this.panner = null;
 
-        this.gain =
-            null;
+        this.lfo = null;
+        this.lfoGain = null;
 
-        this.reverbSend =
-            null;
+        this.filterLfo = null;
+        this.filterLfoGain = null;
 
-        this.panner =
-            null;
-
-        this.lfo =
-            null;
-
-        this.lfoGain =
-            null;
-
-        this.filterLfo =
-            null;
-
-        this.filterLfoGain =
-            null;
-
-        this.isReleased =
-            false;
-
-        this.releaseTimer =
-            null;
+        this.isReleased = false;
+        this.releaseTimer = null;
     }
 
 
     start() {
 
+        const context =
+            this.audioContext;
+
         const now =
-            this.audioContext.currentTime;
+            context.currentTime;
 
-
-        /*
-         * =====================================================
-         * NOTE → FREQUENCY
-         * =====================================================
-         */
 
         const frequency =
             440 *
@@ -84,132 +62,117 @@ export class Voice {
 
 
         /*
-         * =====================================================
-         * OSCILLATOR A
-         *
-         * Fondamental très doux.
-         * =====================================================
+         * OSCILLATEUR PRINCIPAL
          */
 
         this.oscillatorA =
-            this.audioContext.createOscillator();
+            context.createOscillator();
 
         this.oscillatorA.type =
             "sine";
 
-        this.oscillatorA.frequency.setValueAtTime(
-            frequency,
-            now
-        );
-
-        this.oscillatorA.detune.setValueAtTime(
-            -5,
-            now
-        );
+        this.oscillatorA.frequency
+            .setValueAtTime(
+                frequency,
+                now
+            );
 
 
         /*
-         * =====================================================
-         * OSCILLATOR B
+         * SECONDE COUCHE
          *
-         * Donne le corps du pad.
-         * =====================================================
+         * Très légèrement désaccordée.
          */
 
         this.oscillatorB =
-            this.audioContext.createOscillator();
+            context.createOscillator();
 
         this.oscillatorB.type =
             "triangle";
 
-        this.oscillatorB.frequency.setValueAtTime(
-            frequency,
-            now
-        );
+        this.oscillatorB.frequency
+            .setValueAtTime(
+                frequency,
+                now
+            );
 
-        this.oscillatorB.detune.setValueAtTime(
-            5,
-            now
-        );
+        this.oscillatorB.detune
+            .setValueAtTime(
+                7,
+                now
+            );
 
 
         /*
-         * =====================================================
-         * OSCILLATOR C
-         *
-         * Une couche très légèrement plus haute.
-         * Elle est fortement filtrée et très faible.
-         * =====================================================
+         * HARMONIQUE SUPÉRIEURE
          */
 
         this.oscillatorC =
-            this.audioContext.createOscillator();
+            context.createOscillator();
 
         this.oscillatorC.type =
             "sine";
 
-        this.oscillatorC.frequency.setValueAtTime(
-            frequency * 2,
-            now
-        );
+        this.oscillatorC.frequency
+            .setValueAtTime(
+                frequency * 2,
+                now
+            );
 
-        this.oscillatorC.detune.setValueAtTime(
-            -7,
-            now
-        );
+        this.oscillatorC.detune
+            .setValueAtTime(
+                -5,
+                now
+            );
 
 
         /*
-         * =====================================================
-         * FILTER
-         * =====================================================
+         * FILTRE
          */
 
         this.filter =
-            this.audioContext.createBiquadFilter();
+            context.createBiquadFilter();
 
         this.filter.type =
             "lowpass";
 
-        this.filter.frequency.setValueAtTime(
-            1250,
-            now
-        );
+        this.filter.frequency
+            .setValueAtTime(
+                1100,
+                now
+            );
 
-        this.filter.Q.setValueAtTime(
-            0.35,
-            now
-        );
+        this.filter.Q
+            .setValueAtTime(
+                0.3,
+                now
+            );
 
 
         /*
-         * =====================================================
-         * FILTER LFO
-         *
-         * Mouvement extrêmement lent du timbre.
-         * =====================================================
+         * MODULATION LENTE DU FILTRE
          */
 
         this.filterLfo =
-            this.audioContext.createOscillator();
+            context.createOscillator();
 
         this.filterLfoGain =
-            this.audioContext.createGain();
-
+            context.createGain();
 
         this.filterLfo.type =
             "sine";
 
-        this.filterLfo.frequency.setValueAtTime(
-            0.075,
-            now
-        );
+        this.filterLfo.frequency
+            .setValueAtTime(
+                0.055,
+                now
+            );
 
-        this.filterLfoGain.gain.setValueAtTime(
-            500,
-            now
-        );
-
+        this.filterLfoGain.gain
+            .setValueAtTime(
+                380,
+                now
+            );
 
         this.filterLfo.connect(
             this.filterLfoGain
@@ -221,35 +184,29 @@ export class Voice {
 
 
         /*
-         * =====================================================
-         * SLOW PITCH MODULATION
-         *
-         * Très faible mouvement de hauteur.
-         * Presque imperceptible individuellement,
-         * mais donne de la vie au son.
-         * =====================================================
+         * VIBRATION TRÈS LENTE
          */
 
         this.lfo =
-            this.audioContext.createOscillator();
+            context.createOscillator();
 
         this.lfoGain =
-            this.audioContext.createGain();
-
+            context.createGain();
 
         this.lfo.type =
             "sine";
 
-        this.lfo.frequency.setValueAtTime(
-            0.12,
-            now
-        );
+        this.lfo.frequency
+            .setValueAtTime(
+                0.09,
+                now
+            );
 
-        this.lfoGain.gain.setValueAtTime(
-            2.5,
-            now
-        );
-
+        this.lfoGain.gain
+            .setValueAtTime(
+                1.8,
+                now
+            );
 
         this.lfo.connect(
             this.lfoGain
@@ -269,101 +226,92 @@ export class Voice {
 
 
         /*
-         * =====================================================
-         * VOICE GAIN
-         * =====================================================
-         *
-         * Très faible niveau par voix :
-         * on veut pouvoir empiler beaucoup de notes.
+         * ENVELOPPE
          */
 
         this.gain =
-            this.audioContext.createGain();
+            context.createGain();
 
 
         const peakGain =
-            0.085 *
+            0.075 *
             this.velocity;
 
 
-        this.gain.gain.setValueAtTime(
-            0.0001,
-            now
-        );
-
-
         /*
-         * =====================================================
-         * ATTACK
-         * =====================================================
+         * DÉPART QUASI SILENCIEUX
          */
 
-        this.gain.gain.exponentialRampToValueAtTime(
-            Math.max(
-                peakGain,
-                0.0002
-            ),
-            now + 0.7
-        );
+        this.gain.gain
+            .setValueAtTime(
+                0.0001,
+                now
+            );
 
 
         /*
-         * =====================================================
-         * STEREO POSITION
-         * =====================================================
+         * FADE IN TRÈS LONG
          *
-         * Chaque voix occupe légèrement une position
-         * différente dans le champ stéréo.
+         * 2.5 secondes.
+         */
+
+        this.gain.gain
+            .exponentialRampToValueAtTime(
+                Math.max(
+                    peakGain,
+                    0.0002
+                ),
+                now + 2.5
+            );
+
+
+        /*
+         * PANORAMIQUE
          */
 
         this.panner =
-            this.audioContext.createStereoPanner();
-
-
-        const pan =
-            (
-                (
-                    this.note % 12
-                ) / 11
-            ) * 0.5 - 0.25;
-
-
-        this.panner.pan.setValueAtTime(
-            pan,
-            now
-        );
+            context.createStereoPanner();
 
 
         /*
-         * =====================================================
-         * REVERB SEND
-         * =====================================================
+         * Placement doux dans le champ stéréo.
+         */
+
+        const pan =
+            ((this.note % 12) / 11) *
+            0.5 -
+            0.25;
+
+
+        this.panner.pan
+            .setValueAtTime(
+                pan,
+                now
+            );
+
+
+        /*
+         * SEND REVERB
          */
 
         this.reverbSend =
-            this.audioContext.createGain();
-
-
-        this.reverbSend.gain.setValueAtTime(
-            0.62,
-            now
-        );
+            context.createGain();
 
 
         /*
-         * =====================================================
-         * AUDIO ROUTING
-         * =====================================================
-         *
-         * 3 oscillateurs
-         *       ↓
-         *     FILTER
-         *       ↓
-         *     GAIN
-         *       ↓
-         *    PANNER
-         *      ↙  ↘
-         *   DRY    REVERB
+         * Signal fortement envoyé
+         * dans la reverb.
+         */
+
+        this.reverbSend.gain
+            .setValueAtTime(
+                0.82,
+                now
+            );
+
+
+        /*
+         * ROUTING
          */
 
         this.oscillatorA.connect(
@@ -384,20 +332,26 @@ export class Voice {
         );
 
 
+        /*
+         * SIGNAL DIRECT
+         */
+
         this.gain.connect(
             this.panner
         );
-
 
         this.panner.connect(
             this.destination
         );
 
 
+        /*
+         * SIGNAL REVERB
+         */
+
         this.gain.connect(
             this.reverbSend
         );
-
 
         this.reverbSend.connect(
             this.reverbInput
@@ -405,37 +359,16 @@ export class Voice {
 
 
         /*
-         * =====================================================
-         * START MODULATIONS
-         * =====================================================
+         * DÉMARRAGE
          */
 
-        this.lfo.start(
-            now
-        );
+        this.lfo.start(now);
 
-        this.filterLfo.start(
-            now
-        );
+        this.filterLfo.start(now);
 
-
-        /*
-         * =====================================================
-         * START OSCILLATORS
-         * =====================================================
-         */
-
-        this.oscillatorA.start(
-            now
-        );
-
-        this.oscillatorB.start(
-            now
-        );
-
-        this.oscillatorC.start(
-            now
-        );
+        this.oscillatorA.start(now);
+        this.oscillatorB.start(now);
+        this.oscillatorC.start(now);
     }
 
 
@@ -445,14 +378,21 @@ export class Voice {
             return;
         }
 
+        this.isReleased = true;
 
-        this.isReleased =
-            true;
 
+        const context =
+            this.audioContext;
 
         const now =
-            this.audioContext.currentTime;
+            context.currentTime;
 
+
+        /*
+         * FADE OUT TRÈS LONG
+         *
+         * 12 secondes.
+         */
 
         const currentGain =
             Math.max(
@@ -461,52 +401,47 @@ export class Voice {
             );
 
 
-        this.gain.gain.cancelScheduledValues(
-            now
-        );
+        this.gain.gain
+            .cancelScheduledValues(
+                now
+            );
 
+        this.gain.gain
+            .setValueAtTime(
+                currentGain,
+                now
+            );
 
-        this.gain.gain.setValueAtTime(
-            currentGain,
-            now
-        );
-
-
-        /*
-         * =====================================================
-         * LONG AMBIENT RELEASE
-         * =====================================================
-         */
-
-        this.gain.gain.exponentialRampToValueAtTime(
-            0.0001,
-            now + 5
-        );
+        this.gain.gain
+            .exponentialRampToValueAtTime(
+                0.0001,
+                now + 12
+            );
 
 
         /*
-         * Les oscillateurs restent vivants pendant
-         * toute la décroissance.
+         * Les oscillateurs restent actifs
+         * pendant tout le fade.
          */
 
         this.oscillatorA.stop(
-            now + 5.1
+            now + 12.1
         );
 
         this.oscillatorB.stop(
-            now + 5.1
+            now + 12.1
         );
 
         this.oscillatorC.stop(
-            now + 5.1
+            now + 12.1
         );
 
         this.lfo.stop(
-            now + 5.1
+            now + 12.1
         );
 
         this.filterLfo.stop(
-            now + 5.1
+            now + 12.1
         );
 
 
@@ -515,7 +450,7 @@ export class Voice {
                 () => {
                     this.disconnect();
                 },
-                5300
+                12500
             );
     }
 
@@ -530,8 +465,7 @@ export class Voice {
                 this.releaseTimer
             );
 
-            this.releaseTimer =
-                null;
+            this.releaseTimer = null;
         }
 
 
@@ -539,88 +473,62 @@ export class Voice {
             this.oscillatorA?.disconnect();
         } catch {}
 
-
         try {
             this.oscillatorB?.disconnect();
         } catch {}
-
 
         try {
             this.oscillatorC?.disconnect();
         } catch {}
 
-
         try {
             this.filter?.disconnect();
         } catch {}
-
 
         try {
             this.gain?.disconnect();
         } catch {}
 
-
         try {
             this.reverbSend?.disconnect();
         } catch {}
-
 
         try {
             this.panner?.disconnect();
         } catch {}
 
-
         try {
             this.lfo?.disconnect();
         } catch {}
-
 
         try {
             this.lfoGain?.disconnect();
         } catch {}
 
-
         try {
             this.filterLfo?.disconnect();
         } catch {}
-
 
         try {
             this.filterLfoGain?.disconnect();
         } catch {}
 
 
-        this.oscillatorA =
-            null;
+        this.oscillatorA = null;
+        this.oscillatorB = null;
+        this.oscillatorC = null;
 
-        this.oscillatorB =
-            null;
+        this.filter = null;
 
-        this.oscillatorC =
-            null;
+        this.gain = null;
+        this.reverbSend = null;
 
-        this.filter =
-            null;
+        this.panner = null;
 
-        this.gain =
-            null;
+        this.lfo = null;
+        this.lfoGain = null;
 
-        this.reverbSend =
-            null;
-
-        this.panner =
-            null;
-
-        this.lfo =
-            null;
-
-        this.lfoGain =
-            null;
-
-        this.filterLfo =
-            null;
-
-        this.filterLfoGain =
-            null;
+        this.filterLfo = null;
+        this.filterLfoGain = null;
     }
 }
