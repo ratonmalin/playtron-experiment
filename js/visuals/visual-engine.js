@@ -21,6 +21,7 @@ export class VisualEngine {
         this.sleepText = "réveillez-moi";
         this.sleepStartedAt = 0;
         this.interactionCount = 0;
+        this.idleFadeTimer = null;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
@@ -174,8 +175,19 @@ export class VisualEngine {
         const idleMessage =
             document.getElementById("idle-message");
 
+        if (this.idleFadeTimer) {
+            clearTimeout(this.idleFadeTimer);
+            this.idleFadeTimer = null;
+        }
+
         if (idleMessage) {
-            idleMessage.classList.remove("visible");
+            idleMessage.classList.remove("forming");
+            idleMessage.classList.add("fadeout");
+
+            this.idleFadeTimer = setTimeout(() => {
+                idleMessage.classList.remove("visible", "fadeout");
+                this.idleFadeTimer = null;
+            }, 1300);
         }
 
         this.active.set(id, {
@@ -660,7 +672,7 @@ export class VisualEngine {
     }
 
     drawIdle(ctx, now) {
-        const idle = now - this.lastInteraction > 60000;
+        const idle = now - this.lastInteraction > 30000;
         const idleMessage = document.getElementById("idle-message");
 
         if (!idle) {
@@ -675,7 +687,7 @@ export class VisualEngine {
         }
 
         const elapsed = (now - this.lastInteraction) / 1000;
-        const sleepElapsed = Math.max(0, elapsed - 60);
+        const sleepElapsed = Math.max(0, elapsed - 30);
         const cycle = Math.floor(sleepElapsed / 18);
 
         if (cycle !== this.sleepCycle) {
@@ -769,12 +781,6 @@ export class VisualEngine {
 
         // The sleeping message is rendered by the DOM overlay above the canvas.
         // Keeping the text out of the particle layer makes its visibility deterministic.
-        const scanAlpha = 0.028 * messageStrength;
-        for (let y = 0; y < innerHeight; y += 7) {
-            ctx.fillStyle = "rgba(210, 225, 245, " + scanAlpha + ")";
-            ctx.fillRect(0, y, innerWidth, 1);
-        }
-
         ctx.restore();
 
         const points = [];
