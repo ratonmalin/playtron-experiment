@@ -597,11 +597,11 @@ export class VisualEngine {
         for (let y = 0; y < height; y += step) {
             for (let x = 0; x < width; x += step) {
                 const alpha = pixels[(y * width + x) * 4 + 3];
-                if (alpha > 150) candidates.push({ x, y });
+                if (alpha > 70) candidates.push({ x, y });
             }
         }
 
-        const maxParticles = 280;
+        const maxParticles = 520;
         const stride = Math.max(1, Math.ceil(candidates.length / maxParticles));
         const targets = [];
 
@@ -658,7 +658,7 @@ export class VisualEngine {
                 originY: origin.y,
                 targetX: target.x,
                 targetY: target.y,
-                size: 0.55 + (index % 4) * 0.35,
+                size: 0.85 + (index % 5) * 0.32,
                 hue: 190 + (index % 11) * 16,
                 phase: index * 0.47,
                 drift: 0.6 + (index % 7) * 0.11,
@@ -757,9 +757,9 @@ export class VisualEngine {
                 ) * 0.052;
 
             const alpha =
-                (0.10 + messageStrength * 0.62) *
-                (0.72 + hold * 0.28) *
-                (0.72 + Math.sin(now / 1300 + particle.phase) * 0.16);
+                (0.34 + messageStrength * 0.58) *
+                (0.82 + hold * 0.18) *
+                (0.82 + Math.sin(now / 1300 + particle.phase) * 0.12);
 
             ctx.beginPath();
             ctx.arc(
