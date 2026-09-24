@@ -626,14 +626,15 @@ export class VisualEngine {
         }
 
         const elapsed = (now - this.lastInteraction) / 1000;
-        const cycle = Math.floor(elapsed / 18);
+        const sleepElapsed = Math.max(0, elapsed - 120);
+        const cycle = Math.floor(sleepElapsed / 18);
 
         if (cycle !== this.sleepCycle) {
             this.sleepCycle = cycle;
             this.createSleepParticles(now);
         }
 
-        const progress = elapsed % 18;
+        const progress = sleepElapsed % 18;
         const formation = Math.min(1, Math.max(0, (progress - 0.8) / 4.2));
         const formationEase = formation * formation * (3 - 2 * formation);
         const hold = Math.max(0, Math.min(1, (progress - 5) / 5));
@@ -663,7 +664,7 @@ export class VisualEngine {
 
             const alpha =
                 messageStrength *
-                (0.28 + hold * 0.42) *
+                (0.45 + hold * 0.42) *
                 (0.72 + Math.sin(now / 1300 + particle.phase) * 0.16);
 
             ctx.beginPath();
@@ -684,7 +685,7 @@ export class VisualEngine {
         }
 
         if (messageStrength > 0.02 && release < 0.92) {
-            const textAlpha = 0.045 * messageStrength;
+            const textAlpha = 0.58 * messageStrength;
             ctx.font =
                 "italic 300 " +
                 Math.round(Math.min(108, Math.max(46, innerWidth * 0.08))) +
@@ -701,7 +702,7 @@ export class VisualEngine {
             ctx.fillText(this.sleepText, innerWidth * 0.5 - 0.9, innerHeight * 0.5 + 0.4);
         }
 
-        const scanAlpha = 0.018 * messageStrength;
+        const scanAlpha = 0.028 * messageStrength;
         for (let y = 0; y < innerHeight; y += 7) {
             ctx.fillStyle = "rgba(210, 225, 245, " + scanAlpha + ")";
             ctx.fillRect(0, y, innerWidth, 1);
