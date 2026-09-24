@@ -22,6 +22,7 @@ export class VisualEngine {
         this.volumeReveal = 0;
         this.lastVolumeFrame = performance.now();
         this.volumeGeometry = null;
+        this.lastVolumeBuild = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
@@ -777,7 +778,7 @@ export class VisualEngine {
         // The object is built from the paths the bodies actually travelled.
         // We keep the last geometry alive after release so it dissolves
         // instead of disappearing on the same frame as the notes.
-        if (activeParticipants.length >= 2) {
+        if (activeParticipants.length >= 2 && now - this.lastVolumeBuild > 90) {
             const source = activeParticipants
                 .filter(item => item.trail?.length >= 3);
 
@@ -811,6 +812,7 @@ export class VisualEngine {
 
                 if (rings.length >= 3) {
                     this.volumeGeometry = rings;
+                    this.lastVolumeBuild = now;
                 }
             }
         }
@@ -1310,8 +1312,8 @@ export class VisualEngine {
             this.updateActiveBodies(now);
             this.drawIdle(ctx, now);
             this.drawMemory(ctx, now);
-            this.drawActiveBodies(ctx, now);
             this.drawEmergentVolume(ctx, now);
+            this.drawActiveBodies(ctx, now);
 
             this.lastFrameError = 0;
         } catch (error) {
