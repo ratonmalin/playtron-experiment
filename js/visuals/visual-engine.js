@@ -541,7 +541,7 @@ export class VisualEngine {
 
     drawIdle(ctx, now) {
         const idle =
-            now - this.lastInteraction > 5000;
+            now - this.lastInteraction > 120000;
 
         const idleMessage =
             document.getElementById("idle-message");
