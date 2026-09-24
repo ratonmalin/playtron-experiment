@@ -28,10 +28,6 @@
             >
                 FULL SCREEN
             </button>
-
-            <div id="status" class="status">
-                READY
-            </div>
         </header>
 
         <section class="controls" aria-label="Audio controls">
@@ -99,12 +95,6 @@
             })
             .catch(error => {
                 console.error("[BOOT ERROR]", error);
-
-                const status = document.querySelector("#status");
-
-                if (status) {
-                    status.textContent = "JS ERROR";
-                }
             });
     </script>
 
