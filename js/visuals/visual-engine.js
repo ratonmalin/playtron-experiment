@@ -758,6 +758,117 @@ export class VisualEngine {
         return ((phase * 95) % 300 + 300) % 300;
     }
 
+    drawEmergentVolume(ctx, now) {
+        const liveItems = [...this.active.values()]
+            .filter(item => !item.releasedAt)
+            .sort((a, b) => a.note - b.note);
+
+        if (liveItems.length < 2) return;
+
+        const oldestBorn = Math.min(...liveItems.map(item => item.born));
+        const age = Math.max(0, (now - oldestBorn) / 1000);
+        const reveal = Math.min(1, Math.max(0, (age - 2.2) / 9));
+        const eased = reveal * reveal * (3 - 2 * reveal);
+
+        if (eased <= 0.005) return;
+
+        const center = this.getSystemCenter();
+        const rotation = now / 1000 * 0.055;
+        const width = Math.min(innerWidth * 0.20, 175 + liveItems.length * 12);
+        const height = width * 0.64;
+        const depth = 28 + eased * 82;
+        const points = [];
+
+        for (let index = 0; index < liveItems.length; index++) {
+            let angle;
+            let radius = width;
+
+            if (liveItems.length === 2) {
+                angle = rotation + (index === 0 ? 0 : Math.PI);
+                radius = width;
+            } else if (liveItems.length === 3) {
+                angle = rotation - Math.PI / 2 + index * Math.PI * 2 / 3;
+            } else if (liveItems.length === 4) {
+                angle = rotation + Math.PI / 4 + index * Math.PI / 2;
+            } else {
+                angle = rotation + index * Math.PI * 2 / liveItems.length;
+                radius = width * (0.55 + index / Math.max(1, liveItems.length - 1) * 0.45);
+            }
+
+            points.push({
+                x: center.x + Math.cos(angle) * radius,
+                y: center.y + Math.sin(angle) * radius * (height / width),
+                angle
+            });
+        }
+
+        const rear = points.map(point => ({
+            x: point.x - Math.cos(point.angle) * depth,
+            y: point.y - Math.sin(point.angle) * depth * 0.52
+        }));
+
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+
+        const edgeAlpha = 0.025 + eased * 0.16;
+        const glowAlpha = eased * 0.035;
+
+        ctx.beginPath();
+        points.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+        });
+        ctx.closePath();
+        ctx.fillStyle = `rgba(205, 225, 255, ${glowAlpha})`;
+        ctx.fill();
+
+        ctx.beginPath();
+        rear.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = `rgba(170, 205, 245, ${edgeAlpha * 0.52})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        ctx.beginPath();
+        points.forEach((point, index) => {
+            if (index === 0) ctx.moveTo(point.x, point.y);
+            else ctx.lineTo(point.x, point.y);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = `rgba(225, 240, 255, ${edgeAlpha})`;
+        ctx.lineWidth = 0.8 + eased * 1.2;
+        ctx.stroke();
+
+        for (let index = 0; index < points.length; index++) {
+            const front = points[index];
+            const back = rear[index];
+
+            ctx.beginPath();
+            ctx.moveTo(front.x, front.y);
+            ctx.lineTo(back.x, back.y);
+            ctx.strokeStyle = `rgba(190, 220, 255, ${edgeAlpha * 0.72})`;
+            ctx.lineWidth = 0.65 + eased * 0.7;
+            ctx.stroke();
+        }
+
+        const innerScale = 0.58 + eased * 0.16;
+        ctx.beginPath();
+        points.forEach((point, index) => {
+            const x = center.x + (point.x - center.x) * innerScale;
+            const y = center.y + (point.y - center.y) * innerScale;
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = `rgba(235, 245, 255, ${edgeAlpha * 0.48})`;
+        ctx.lineWidth = 0.7;
+        ctx.stroke();
+
+        ctx.restore();
+    }
     drawActiveBodies(ctx, now) {
         const items = [...this.active.values()];
         const liveItems = items.filter(item => !item.releasedAt);
@@ -1123,6 +1234,7 @@ export class VisualEngine {
             this.updateActiveBodies(now);
             this.drawIdle(ctx, now);
             this.drawMemory(ctx, now);
+            this.drawEmergentVolume(ctx, now);
             this.drawActiveBodies(ctx, now);
 
             this.lastFrameError = 0;
