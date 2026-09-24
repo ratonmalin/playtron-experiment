@@ -18,7 +18,6 @@ export class VisualEngine {
         this.lastFrameError = 0;
         this.sleepCycle = -1;
         this.sleepParticles = [];
-        this.sleepText = "réveillez-moi";
         this.sleepStartedAt = 0;
         this.interactionCount = 0;
         this.idleFadeTimer = null;
@@ -170,24 +169,6 @@ export class VisualEngine {
             );
         } else if (previousCount > 1) {
             this.chordSize = Math.min(6, previousCount + 1);
-        }
-
-        const idleMessage =
-            document.getElementById("idle-message");
-
-        if (this.idleFadeTimer) {
-            clearTimeout(this.idleFadeTimer);
-            this.idleFadeTimer = null;
-        }
-
-        if (idleMessage) {
-            idleMessage.classList.remove("forming");
-            idleMessage.classList.add("fadeout");
-
-            this.idleFadeTimer = setTimeout(() => {
-                idleMessage.classList.remove("visible", "fadeout");
-                this.idleFadeTimer = null;
-            }, 1300);
         }
 
         this.active.set(id, {
@@ -673,45 +654,11 @@ export class VisualEngine {
 
     drawIdle(ctx, now) {
         const idle = now - this.lastInteraction > 30000;
-        const idleMessage = document.getElementById("idle-message");
-
         if (!idle) {
             this.sleepCycle = -1;
             this.sleepParticles = [];
 
-            if (idleMessage) {
-                idleMessage.classList.remove("visible");
-            }
-
-            return;
-        }
-
-        const elapsed = (now - this.lastInteraction) / 1000;
-        const sleepElapsed = Math.max(0, elapsed - 30);
-        const cycle = Math.floor(sleepElapsed / 18);
-
-        if (cycle !== this.sleepCycle) {
-            this.sleepCycle = cycle;
-            this.createSleepParticles(now);
-        }
-
-        const progress = sleepElapsed % 18;
-        const formation = Math.min(1, Math.max(0, (progress - 0.8) / 4.2));
-        const formationEase = formation * formation * (3 - 2 * formation);
-        const hold = Math.max(0, Math.min(1, (progress - 5) / 5));
-        const release = Math.max(0, Math.min(1, (progress - 10) / 7));
-        const messageStrength = Math.min(1, formationEase * (1 - release));
-
-        if (idleMessage) {
-            idleMessage.textContent = this.sleepText;
-            idleMessage.classList.add("visible");
-            idleMessage.classList.toggle(
-                "forming",
-                formationEase < 0.92
-            );
-        }
-
-        const lastNote = this.memory.length
+            const lastNote = this.memory.length
             ? this.memory[this.memory.length - 1].note
             : 60;
         const baseHue = this.getNoteHue(lastNote);
@@ -779,8 +726,6 @@ export class VisualEngine {
             ctx.fill();
         }
 
-        // The sleeping message is rendered by the DOM overlay above the canvas.
-        // Keeping the text out of the particle layer makes its visibility deterministic.
         ctx.restore();
 
         const points = [];
