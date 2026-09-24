@@ -229,6 +229,32 @@ export class AudioEngine {
 
         this.activeVoices.set(voiceId, voice);
         voice.start();
+        this.updateSystemState();
+    }
+
+    updateSystemState() {
+        const voices = [...this.activeVoices.values()];
+        const count = voices.length;
+
+        for (const voice of voices) {
+            let nearestDistance = Infinity;
+
+            for (const other of voices) {
+                if (other === voice) continue;
+
+                nearestDistance = Math.min(
+                    nearestDistance,
+                    Math.abs(other.note - voice.note)
+                );
+            }
+
+            voice.setSystemState({
+                count,
+                nearestDistance: Number.isFinite(nearestDistance)
+                    ? nearestDistance
+                    : null
+            });
+        }
     }
 
     noteOff(event) {
@@ -243,6 +269,7 @@ export class AudioEngine {
 
         voice.release();
         this.activeVoices.delete(voiceId);
+        this.updateSystemState();
     }
 
     panic() {
