@@ -584,7 +584,7 @@ export class VisualEngine {
         const messages = [
             "réveillez-moi",
             "je suis encore là",
-            "écoutez",
+            "je vous attends",
             "réveillez-moi"
         ];
 
