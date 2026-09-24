@@ -111,9 +111,14 @@ export class VisualEngine {
         item.releasedAt = performance.now();
         item.duration = Math.max(0.05, (item.releasedAt - item.born) / 1000);
 
+        const memoryIndex = this.memory.length;
+        const seed = item.note * 12.9898 + memoryIndex * 78.233;
+        const randomX = (Math.sin(seed) * 43758.5453) % 1;
+        const randomY = (Math.sin(seed + 19.19) * 43758.5453) % 1;
+
         this.memory.push({
-            x: item.x ?? innerWidth * 0.5,
-            y: item.y ?? innerHeight * 0.5,
+            x: innerWidth * (0.10 + Math.abs(randomX) * 0.80),
+            y: innerHeight * (0.12 + Math.abs(randomY) * 0.72),
             born: performance.now(),
             note: item.note,
             duration: item.duration,
@@ -269,35 +274,49 @@ export class VisualEngine {
             return age < memoryLifetime;
         });
 
+        const linked = new Set();
+
         for (let i = 0; i < visibleStars.length; i++) {
             const a = visibleStars[i];
             const ageA = (now - a.born) / 1000;
             const lifeA = Math.max(0, 1 - ageA / memoryLifetime);
 
-            for (let j = i + 1; j < visibleStars.length; j++) {
+            let nearest = null;
+            let nearestDistance = Infinity;
+
+            for (let j = 0; j < visibleStars.length; j++) {
+                if (i === j) continue;
+
                 const b = visibleStars[j];
-                const dx = b.x - a.x;
-                const dy = b.y - a.y;
-                const distance = Math.hypot(dx, dy);
+                const distance = Math.hypot(b.x - a.x, b.y - a.y);
 
-                if (distance > 170) continue;
-
-                const ageB = (now - b.born) / 1000;
-                const lifeB = Math.max(0, 1 - ageB / memoryLifetime);
-                const alpha =
-                    0.055 *
-                    lifeA *
-                    lifeB *
-                    (1 - distance / 170);
-
-                ctx.beginPath();
-                ctx.moveTo(a.x, a.y);
-                ctx.lineTo(b.x, b.y);
-                ctx.strokeStyle =
-                    `rgba(213, 165, 91, ${alpha})`;
-                ctx.lineWidth = 0.7;
-                ctx.stroke();
+                if (distance < nearestDistance) {
+                    nearest = b;
+                    nearestDistance = distance;
+                }
             }
+
+            if (!nearest || nearestDistance > 250) continue;
+
+            const pairKey = [a.born, nearest.born].sort().join(":");
+            if (linked.has(pairKey)) continue;
+            linked.add(pairKey);
+
+            const ageB = (now - nearest.born) / 1000;
+            const lifeB = Math.max(0, 1 - ageB / memoryLifetime);
+            const alpha =
+                0.10 *
+                lifeA *
+                lifeB *
+                (1 - nearestDistance / 250);
+
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(nearest.x, nearest.y);
+            ctx.strokeStyle =
+                `rgba(185, 205, 235, ${alpha})`;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
         }
 
         for (const star of this.memory) {
@@ -307,21 +326,21 @@ export class VisualEngine {
             if (life <= 0) continue;
 
             const radius =
-                1.5 +
-                Math.min(3.5, star.duration * 0.65) +
-                star.energy * 1.6;
+                1.4 +
+                Math.min(1.8, star.duration * 0.38) +
+                star.energy * 0.7;
 
             ctx.beginPath();
             ctx.arc(star.x, star.y, radius, 0, Math.PI * 2);
             ctx.fillStyle =
-                `hsla(${this.getNoteHue(star.note || 48)}, 68%, 68%, ${0.34 * life})`;
+                `hsla(${this.getNoteHue(star.note || 48)}, 62%, 82%, ${0.72 * life})`;
             ctx.fill();
 
             if (star.duration > 1.4) {
                 ctx.beginPath();
-                ctx.arc(star.x, star.y, radius * 4, 0, Math.PI * 2);
+                ctx.arc(star.x, star.y, radius * 5.5, 0, Math.PI * 2);
                 ctx.strokeStyle =
-                    `hsla(${star.note ? ((star.note - 48) / 31) * 300 + 20 : 42}, 58%, 62%, ${0.08 * life})`;
+                    `hsla(${this.getNoteHue(star.note || 48)}, 52%, 78%, ${0.10 * life})`;
                 ctx.lineWidth = 1;
                 ctx.stroke();
             }
@@ -335,38 +354,67 @@ export class VisualEngine {
         if (!idle) return;
 
         const elapsed = now / 1000;
-        const centerX = innerWidth * 0.5;
-        const centerY = innerHeight * 0.47;
+        const points = [];
 
-        for (const body of this.idleBodies) {
+        for (let index = 0; index < this.idleBodies.length; index++) {
+            const body = this.idleBodies[index];
             const angle =
                 body.angle +
                 elapsed * body.speed +
-                Math.sin(elapsed * 0.17 + body.phase) * 0.18;
+                Math.sin(elapsed * 0.13 + body.phase) * 0.20;
 
             const x =
-                centerX +
-                Math.cos(angle) * body.radius;
+                innerWidth * (0.08 + (index % 4) * 0.28) +
+                Math.sin(elapsed * 0.11 + body.phase) * 55;
 
             const y =
-                centerY +
-                Math.sin(angle) * body.radius * 0.55;
+                innerHeight * (0.16 + Math.floor(index / 4) * 0.34) +
+                Math.cos(angle) * 48;
 
             const alpha =
-                0.13 +
-                0.045 * Math.sin(elapsed * 0.6 + body.phase);
+                0.34 +
+                0.10 * Math.sin(elapsed * 0.55 + body.phase);
 
-            const hue = (195 + body.phase * 82) % 360;
+            const hue = (205 + body.phase * 58) % 360;
+            points.push({ x, y, hue, body, alpha });
 
             ctx.beginPath();
-            ctx.arc(x, y, body.size * 5.5, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 55%, 68%, ${alpha * 0.16})`;
+            ctx.arc(x, y, body.size * 8, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 65%, 75%, ${alpha * 0.10})`;
             ctx.fill();
 
             ctx.beginPath();
-            ctx.arc(x, y, body.size, 0, Math.PI * 2);
-            ctx.fillStyle = `hsla(${hue}, 58%, 68%, ${alpha})`;
+            ctx.arc(x, y, body.size * 1.35, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 62%, 82%, ${alpha})`;
             ctx.fill();
+        }
+
+        for (let i = 0; i < points.length; i++) {
+            let nearest = null;
+            let nearestDistance = Infinity;
+
+            for (let j = 0; j < points.length; j++) {
+                if (i === j) continue;
+                const distance = Math.hypot(
+                    points[i].x - points[j].x,
+                    points[i].y - points[j].y
+                );
+
+                if (distance < nearestDistance) {
+                    nearestDistance = distance;
+                    nearest = points[j];
+                }
+            }
+
+            if (!nearest || nearestDistance > 360) continue;
+
+            ctx.beginPath();
+            ctx.moveTo(points[i].x, points[i].y);
+            ctx.lineTo(nearest.x, nearest.y);
+            ctx.strokeStyle =
+                `rgba(175, 195, 225, ${0.16 * points[i].alpha * (1 - nearestDistance / 360)})`;
+            ctx.lineWidth = 0.9;
+            ctx.stroke();
         }
     }
 
