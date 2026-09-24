@@ -1,4 +1,3 @@
-```js
 export class Voice {
 
     constructor(
@@ -86,6 +85,9 @@ export class Voice {
 
         /*
          * OCTAVE SUPÉRIEURE
+         *
+         * Conservée comme dans la version
+         * qui fonctionnait.
          */
 
         this.oscillatorC =
@@ -404,6 +406,7 @@ export class Voice {
             this.releaseTimer = null;
         }
 
+
         try {
             this.oscillatorA?.disconnect();
         } catch {}
@@ -465,4 +468,3 @@ export class Voice {
         this.filterLfoGain = null;
     }
 }
-```
