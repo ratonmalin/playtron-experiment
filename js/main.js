@@ -8,26 +8,20 @@ import { KeyboardInput } from "./input/keyboard.js";
 import { AudioEngine } from "./audio/audio.js";
 
 
-/*
- * --------------------------------------------------
- * CORE
- * --------------------------------------------------
- */
+/* =========================================================
+   CORE
+   ========================================================= */
 
 const eventBus = new EventBus();
 
-const keyboard =
-    new KeyboardInput(eventBus);
+const keyboard = new KeyboardInput(eventBus);
 
-const audioEngine =
-    new AudioEngine(eventBus);
+const audioEngine = new AudioEngine(eventBus);
 
 
-/*
- * --------------------------------------------------
- * UI ELEMENTS
- * --------------------------------------------------
- */
+/* =========================================================
+   DOM
+   ========================================================= */
 
 const keyboardElement =
     document.querySelector("#keyboard");
@@ -45,25 +39,35 @@ const startAudioButton =
     document.querySelector("#start-audio");
 
 
-/*
- * --------------------------------------------------
- * KEYBOARD UI
- * --------------------------------------------------
- */
+/* =========================================================
+   DOM CHECK
+   ========================================================= */
+
+console.log("[MAIN] JavaScript chargé.");
+
+console.log("[MAIN] Audio button:", startAudioButton);
+
+if (!startAudioButton) {
+    console.error(
+        "[MAIN ERROR] Le bouton #start-audio est introuvable."
+    );
+}
+
+
+/* =========================================================
+   KEYBOARD UI
+   ========================================================= */
 
 function createKeyboardUI() {
 
     keyboardElement.innerHTML = "";
 
-    for (
-        const [key, midiNote]
-        of Object.entries(KEYBOARD_MAPPING)
-    ) {
+    for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
 
-        const element =
-            document.createElement("div");
+        const element = document.createElement("div");
 
         element.className = "key";
+
         element.dataset.key = key;
 
         element.innerHTML = `
@@ -81,31 +85,31 @@ function createKeyboardUI() {
 }
 
 
-/*
- * --------------------------------------------------
- * MAPPING UI
- * --------------------------------------------------
- */
+/* =========================================================
+   MAPPING UI
+   ========================================================= */
 
 function createMappingUI() {
 
     mappingElement.innerHTML = "";
 
-    for (
-        const [key, midiNote]
-        of Object.entries(KEYBOARD_MAPPING)
-    ) {
+    for (const [key, midiNote] of Object.entries(KEYBOARD_MAPPING)) {
 
-        const element =
-            document.createElement("div");
+        const element = document.createElement("div");
 
-        element.className =
-            "mapping-item";
+        element.className = "mapping-item";
 
         element.innerHTML = `
-            <strong>${key.toUpperCase()}</strong>
-            → ${midiToNoteName(midiNote)}
-            <span>(${midiNote})</span>
+            <strong>
+                ${key.toUpperCase()}
+            </strong>
+
+            →
+            ${midiToNoteName(midiNote)}
+
+            <span>
+                (${midiNote})
+            </span>
         `;
 
         mappingElement.appendChild(element);
@@ -113,11 +117,9 @@ function createMappingUI() {
 }
 
 
-/*
- * --------------------------------------------------
- * VISUAL KEY STATE
- * --------------------------------------------------
- */
+/* =========================================================
+   KEYBOARD VISUAL STATE
+   ========================================================= */
 
 function updateKeyboardKey(event) {
 
@@ -125,8 +127,7 @@ function updateKeyboardKey(event) {
         return;
     }
 
-    const key =
-        findKeyForNote(event.note);
+    const key = findKeyForNote(event.note);
 
     if (!key) {
         return;
@@ -142,11 +143,15 @@ function updateKeyboardKey(event) {
     }
 
     if (event.type === "noteon") {
+
         element.classList.add("active");
+
     }
 
     if (event.type === "noteoff") {
+
         element.classList.remove("active");
+
     }
 }
 
@@ -167,11 +172,9 @@ function findKeyForNote(note) {
 }
 
 
-/*
- * --------------------------------------------------
- * EVENT DISPLAY
- * --------------------------------------------------
- */
+/* =========================================================
+   EVENT DISPLAY
+   ========================================================= */
 
 function displayEvent(event) {
 
@@ -186,61 +189,61 @@ function displayEvent(event) {
 }
 
 
-/*
- * --------------------------------------------------
- * EVENT BUS
- * --------------------------------------------------
- */
+/* =========================================================
+   EVENT BUS
+   ========================================================= */
 
 eventBus.on("noteon", event => {
 
-    console.log(
-        "[NOTE ON]",
-        event
-    );
+    console.log("[NOTE ON]", event);
 
     updateKeyboardKey(event);
+
     displayEvent(event);
 });
 
 
 eventBus.on("noteoff", event => {
 
-    console.log(
-        "[NOTE OFF]",
-        event
-    );
+    console.log("[NOTE OFF]", event);
 
     updateKeyboardKey(event);
+
     displayEvent(event);
 });
 
 
-/*
- * --------------------------------------------------
- * AUDIO START
- * --------------------------------------------------
- */
+/* =========================================================
+   AUDIO
+   ========================================================= */
 
 async function startAudio() {
+
+    console.log("[AUDIO] Bouton cliqué.");
+
+    if (!startAudioButton) {
+        return;
+    }
+
+    startAudioButton.disabled = true;
+
+    statusElement.textContent =
+        "STARTING AUDIO...";
 
     try {
 
         await audioEngine.start();
+
+        console.log(
+            "[AUDIO] AudioContext:",
+            audioEngine.audioContext?.state
+        );
 
         statusElement.textContent =
             "AUDIO READY";
 
         startAudioButton.textContent =
             "Son activé";
-
-        startAudioButton.disabled = true;
-
-        console.log(
-            "[AUDIO]",
-            "AudioContext started:",
-            audioEngine.audioContext.state
-        );
 
     } catch (error) {
 
@@ -254,23 +257,35 @@ async function startAudio() {
 
         startAudioButton.textContent =
             "Erreur — réessayer";
+
+        startAudioButton.disabled = false;
     }
 }
 
 
-startAudioButton.addEventListener(
-    "click",
-    startAudio
-);
+/* =========================================================
+   AUDIO BUTTON
+   ========================================================= */
+
+if (startAudioButton) {
+
+    startAudioButton.addEventListener(
+        "click",
+        startAudio
+    );
+
+    console.log(
+        "[MAIN] Listener du bouton audio installé."
+    );
+}
 
 
-/*
- * --------------------------------------------------
- * INITIALIZATION
- * --------------------------------------------------
- */
+/* =========================================================
+   INITIALIZATION
+   ========================================================= */
 
 createKeyboardUI();
+
 createMappingUI();
 
 keyboard.start();
