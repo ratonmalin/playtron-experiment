@@ -17,8 +17,6 @@ export class VisualEngine {
         this.maxMemoryStars = 180;
         this.lastFrameError = 0;
         this.sleepCycle = -1;
-        this.sleepParticles = [];
-        this.sleepStartedAt = 0;
         this.interactionCount = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
@@ -538,124 +536,17 @@ export class VisualEngine {
         }
     }
 
-    createSleepParticles(now) {
-        const width = Math.max(1, innerWidth);
-        const height = Math.max(1, innerHeight);
-        const scale = Math.min(1.5, Math.max(0.9, width / 1100));
-        const offscreen = document.createElement("canvas");
-        const offscreenCtx = offscreen.getContext("2d", { willReadFrequently: true });
-
-        if (!offscreenCtx) {
-            this.sleepParticles = [];
-            return;
-        }
-
-        offscreen.width = Math.floor(width);
-        offscreen.height = Math.floor(height);
-        offscreenCtx.clearRect(0, 0, width, height);
-        offscreenCtx.fillStyle = "#ffffff";
-        offscreenCtx.textAlign = "center";
-        offscreenCtx.textBaseline = "middle";
-        offscreenCtx.font =
-            "100 " +
-            Math.round(92 * scale) +
-            "px Roboto, sans-serif";
-
-        const messages = [
-            "RÉVEILLEZ-MOI",
-            "JE SUIS LÀ",
-            "HEY"
-        ];
-
-        this.sleepText =
-            messages[this.sleepCycle % messages.length];
-        offscreenCtx.fillText(this.sleepText, width * 0.5, height * 0.5);
-
-        const pixels = offscreenCtx.getImageData(0, 0, width, height).data;
-        const candidates = [];
-        const step = Math.max(5, Math.round(6 / scale));
-
-        for (let y = 0; y < height; y += step) {
-            for (let x = 0; x < width; x += step) {
-                const alpha = pixels[(y * width + x) * 4 + 3];
-                if (alpha > 70) candidates.push({ x, y });
-            }
-        }
-
-        const maxParticles = 520;
-        const stride = Math.max(1, Math.ceil(candidates.length / maxParticles));
-        const targets = [];
-
-        for (let i = 0; i < candidates.length; i += stride) {
-            targets.push(candidates[i]);
-        }
-
-        const origins = [];
-
-        for (const star of this.memory) {
-            const age = (now - star.born) / 1000;
-            if (age < 300) {
-                origins.push({
-                    x: star.x,
-                    y: star.y
-                });
-            }
-        }
-
-        for (let index = 0; index < this.idleBodies.length; index++) {
-            const body = this.idleBodies[index];
-            const angle =
-                body.angle +
-                (now / 1000) * body.speed +
-                Math.sin((now / 1000) * 0.13 + body.phase) * 0.20;
-
-            origins.push({
-                x:
-                    width * (0.08 + (index % 4) * 0.28) +
-                    Math.sin((now / 1000) * 0.11 + body.phase) * 55,
-                y:
-                    height * (0.16 + Math.floor(index / 4) * 0.34) +
-                    Math.cos(angle) * 48
-            });
-        }
-
-        const fallbackCount = Math.max(40, targets.length);
-
-        for (let index = origins.length; index < fallbackCount; index++) {
-            const angle = index * 2.399963;
-            const radius = 120 + (index % 19) * 37;
-            origins.push({
-                x: width * 0.5 + Math.cos(angle) * radius * 2.4,
-                y: height * 0.47 + Math.sin(angle) * radius * 1.5
-            });
-        }
-
-        this.sleepParticles = targets.map((target, index) => {
-            const origin = origins[index % origins.length];
-            return {
-                x: origin.x,
-                y: origin.y,
-                originX: origin.x,
-                originY: origin.y,
-                targetX: target.x,
-                targetY: target.y,
-                size: 0.85 + (index % 5) * 0.32,
-                hue: 190 + (index % 11) * 16,
-                phase: index * 0.47,
-                drift: 0.6 + (index % 7) * 0.11,
-                scatterAngle: index * 2.399963,
-                scatterRadius: 180 + (index % 13) * 22
-            };
-        });
-
-        this.sleepStartedAt = now;
-    }
-
     drawIdle(ctx, now) {
         const idle = now - this.lastInteraction > 30000;
+        const idleMessage = document.getElementById("idle-message");
+
         if (!idle) {
             this.sleepCycle = -1;
-            this.sleepParticles = [];
+
+            if (idleMessage) {
+                idleMessage.classList.remove("visible");
+            }
+
             return;
         }
 
@@ -665,88 +556,30 @@ export class VisualEngine {
 
         if (cycle !== this.sleepCycle) {
             this.sleepCycle = cycle;
-            this.createSleepParticles(now);
+
+            const messages = [
+                "RÉVEILLEZ-MOI",
+                "JE SUIS LÀ",
+                "HEY"
+            ];
+
+            if (idleMessage) {
+                idleMessage.textContent =
+                    messages[cycle % messages.length];
+                idleMessage.classList.add("visible");
+            }
+        } else if (idleMessage) {
+            idleMessage.classList.add("visible");
         }
 
         const progress = sleepElapsed % 18;
-        const formation = Math.min(1, Math.max(0, (progress - 0.8) / 4.2));
-        const formationEase = formation * formation * (3 - 2 * formation);
         const hold = Math.max(0, Math.min(1, (progress - 5) / 5));
         const release = Math.max(0, Math.min(1, (progress - 10) / 7));
-        const messageStrength = Math.min(1, formationEase * (1 - release));
+        const messageStrength =
+            Math.min(1, (1 - release) * (0.72 + hold * 0.28));
 
-        const lastNote = this.memory.length
-            ? this.memory[this.memory.length - 1].note
-            : 60;
-        const baseHue = this.getNoteHue(lastNote);
-
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-
-        for (const particle of this.sleepParticles) {
-            const breathe = Math.sin(now / 1900 + particle.phase) * 1.8;
-            const driftX = Math.cos(now / 2700 + particle.phase) * particle.drift * (1 - formationEase);
-            const driftY = Math.sin(now / 2300 + particle.phase) * particle.drift * (1 - formationEase);
-            const targetX = particle.targetX + breathe * 0.7;
-            const targetY = particle.targetY + breathe * 0.35;
-            const dispersedX =
-                particle.targetX +
-                Math.cos(particle.scatterAngle) *
-                    particle.scatterRadius +
-                driftX * 8;
-            const dispersedY =
-                particle.targetY +
-                Math.sin(particle.scatterAngle) *
-                    particle.scatterRadius *
-                    0.72 +
-                driftY * 8;
-
-            const formationTargetX =
-                particle.targetX * formationEase +
-                particle.originX * (1 - formationEase);
-            const formationTargetY =
-                particle.targetY * formationEase +
-                particle.originY * (1 - formationEase);
-
-            particle.x +=
-                (
-                    formationTargetX * (1 - release) +
-                    dispersedX * release -
-                    particle.x
-                ) * 0.052;
-            particle.y +=
-                (
-                    formationTargetY * (1 - release) +
-                    dispersedY * release -
-                    particle.y
-                ) * 0.052;
-
-            const alpha =
-                (0.34 + messageStrength * 0.58) *
-                (0.82 + hold * 0.18) *
-                (0.82 + Math.sin(now / 1300 + particle.phase) * 0.12);
-
-            ctx.beginPath();
-            ctx.arc(
-                particle.x,
-                particle.y,
-                particle.size * (0.9 + hold * 0.25),
-                0,
-                Math.PI * 2
-            );
-            ctx.fillStyle =
-                "hsla(" +
-                ((baseHue + particle.hue) % 360) +
-                ", 55%, 86%, " +
-                Math.max(0, alpha) +
-                ")";
-            ctx.fill();
-        }
-
-        ctx.restore();
-
-        const points = [];
         const elapsedAbsolute = now / 1000;
+        const points = [];
 
         for (let index = 0; index < this.idleBodies.length; index++) {
             const body = this.idleBodies[index];
@@ -754,26 +587,39 @@ export class VisualEngine {
                 body.angle +
                 elapsedAbsolute * body.speed +
                 Math.sin(elapsedAbsolute * 0.13 + body.phase) * 0.20;
+
             const x =
                 innerWidth * (0.08 + (index % 4) * 0.28) +
                 Math.sin(elapsedAbsolute * 0.11 + body.phase) * 55;
             const y =
                 innerHeight * (0.16 + Math.floor(index / 4) * 0.34) +
                 Math.cos(angle) * 48;
+
             const alpha =
                 (0.34 + 0.10 * Math.sin(elapsedAbsolute * 0.55 + body.phase)) *
                 (1 - messageStrength * 0.72);
+
             const hue = (205 + body.phase * 58) % 360;
             points.push({ x, y, hue, body, alpha });
 
             ctx.beginPath();
             ctx.arc(x, y, body.size * 8, 0, Math.PI * 2);
-            ctx.fillStyle = "hsla(" + hue + ", 65%, 75%, " + (alpha * 0.10) + ")";
+            ctx.fillStyle =
+                "hsla(" +
+                hue +
+                ", 65%, 75%, " +
+                (alpha * 0.10) +
+                ")";
             ctx.fill();
 
             ctx.beginPath();
             ctx.arc(x, y, body.size * 1.35, 0, Math.PI * 2);
-            ctx.fillStyle = "hsla(" + hue + ", 62%, 82%, " + alpha + ")";
+            ctx.fillStyle =
+                "hsla(" +
+                hue +
+                ", 62%, 82%, " +
+                alpha +
+                ")";
             ctx.fill();
         }
 
