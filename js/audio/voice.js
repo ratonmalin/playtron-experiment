@@ -34,6 +34,7 @@ export class Voice {
 
         this.isReleased = false;
         this.releaseTimer = null;
+        this.startedAt = null;
     }
 
 
@@ -41,6 +42,7 @@ export class Voice {
 
         const context = this.audioContext;
         const now = context.currentTime;
+        this.startedAt = now;
 
         const frequency =
             440 * Math.pow(
@@ -142,9 +144,13 @@ export class Voice {
 
         this.filter.type = "lowpass";
 
+        const filterBase =
+            850 +
+            ((this.note - 48) / 31) * 1050;
+
         this.filter.frequency
             .setValueAtTime(
-                1250,
+                Math.max(700, Math.min(1900, filterBase)),
                 now
             );
 
@@ -208,7 +214,7 @@ export class Voice {
 
         this.lfoGain.gain
             .setValueAtTime(
-                1.5,
+                1.2 + this.velocity * 0.8,
                 now
             );
 
@@ -268,7 +274,7 @@ export class Voice {
             context.createStereoPanner();
 
         const pan =
-            ((this.note % 12) / 11) * 0.5 - 0.25;
+            ((this.note - 48) / 31) * 0.5 - 0.25;
 
         this.panner.pan
             .setValueAtTime(
@@ -360,9 +366,24 @@ export class Voice {
                 0.0001
             );
 
+        const heldFor =
+            Math.max(
+                0,
+                now - (this.startedAt ?? now)
+            );
+
+        const releaseTime =
+            heldFor < 0.45
+                ? 3.5
+                : heldFor < 2
+                    ? 7
+                    : 10;
 
         /*
-         * FADE DE 10 SECONDES
+         * RELEASE ADAPTATIF
+         *
+         * Une note brève disparaît plus vite.
+         * Une note tenue conserve une longue traîne.
          */
 
         this.gain.gain
@@ -377,28 +398,28 @@ export class Voice {
         this.gain.gain
             .exponentialRampToValueAtTime(
                 0.0001,
-                now + 10
+                now + releaseTime
             );
 
 
         this.oscillatorA.stop(
-            now + 10.1
+            now + releaseTime + 0.1
         );
 
         this.oscillatorB.stop(
-            now + 10.1
+            now + releaseTime + 0.1
         );
 
         this.oscillatorC.stop(
-            now + 10.1
+            now + releaseTime + 0.1
         );
 
         this.lfo.stop(
-            now + 10.1
+            now + releaseTime + 0.1
         );
 
         this.filterLfo.stop(
-            now + 10.1
+            now + releaseTime + 0.1
         );
 
 
@@ -407,7 +428,7 @@ export class Voice {
                 () => {
                     this.disconnect();
                 },
-                10500
+                (releaseTime + 0.5) * 1000
             );
     }
 
