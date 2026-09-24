@@ -99,65 +99,6 @@ h1 {
     display: none;
 }
 
-.idle-message {
-    display: none;
-    position: fixed;
-    left: 50%;
-    top: 50%;
-    z-index: 3;
-    transform: translate(-50%, -50%) scale(0.985);
-    color: #ffffff;
-    font-family:
-        "Roboto",
-        sans-serif;
-    font-size: clamp(46px, 8vw, 108px);
-    font-weight: 100;
-    font-style: normal;
-    letter-spacing: 0.01em;
-    text-transform: lowercase;
-    opacity: 0;
-    filter: none;
-    transition:
-        opacity 1800ms cubic-bezier(0.22, 1, 0.36, 1),
-        transform 2200ms cubic-bezier(0.22, 1, 0.36, 1),
-        visibility 0s linear 1800ms;
-    pointer-events: none;
-    white-space: nowrap;
-    visibility: hidden;
-}
-
-.idle-message.visible {
-    visibility: hidden;
-    opacity: 0;
-    transform: translate(-50%, -54%) scale(1);
-    animation: idle-breathe 8.5s ease-in-out 7s infinite;
-}
-
-.idle-message.forming {
-    opacity: 0;
-}
-
-.idle-message.fadeout {
-    opacity: 0;
-    transform: translate(-50%, -54%) scale(0.995);
-    visibility: visible;
-    transition:
-        opacity 1200ms cubic-bezier(0.22, 1, 0.36, 1),
-        transform 1200ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes idle-breathe {
-    0%,
-    100% {
-        transform: translate(-50%, -54%) scale(1);
-        letter-spacing: 0.015em;
-    }
-
-    50% {
-        transform: translate(-50%, -54.8%) scale(1.012);
-        letter-spacing: 0.018em;
-    }
-}
 
 .instrument {
     position: fixed;
@@ -329,11 +270,6 @@ h1 {
         font-size: 8px;
     }
 
-    .idle-message {
-        font-size: 40px;
-        letter-spacing: 0.01em;
-        text-align: center;
-    }
 
     .technical-footer {
         left: 18px;
