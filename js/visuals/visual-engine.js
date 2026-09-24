@@ -53,6 +53,28 @@ export class VisualEngine {
 
         const ctx = this.ctx;
         const now = performance.now();
+
+        const drift = now * 0.000035;
+        const ambientX = innerWidth * (0.5 + Math.sin(drift) * 0.22);
+        const ambientY = innerHeight * (0.45 + Math.cos(drift * 0.73) * 0.18);
+        const ambientRadius = Math.min(innerWidth, innerHeight) * 0.55;
+
+        const ambient = ctx.createRadialGradient(
+            ambientX,
+            ambientY,
+            0,
+            ambientX,
+            ambientY,
+            ambientRadius
+        );
+
+        ambient.addColorStop(0, "rgba(190, 210, 240, 0.075)");
+        ambient.addColorStop(0.55, "rgba(215, 220, 235, 0.035)");
+        ambient.addColorStop(1, "rgba(215, 220, 235, 0)");
+
+        ctx.fillStyle = ambient;
+        ctx.fillRect(0, 0, innerWidth, innerHeight);
+
         ctx.fillStyle = "rgba(243, 240, 233, 0.045)";
         ctx.fillRect(0, 0, innerWidth, innerHeight);
 
