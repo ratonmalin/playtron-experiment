@@ -467,10 +467,10 @@ export class Voice {
 
         const releaseTime =
             heldFor < 0.45
-                ? 3.5
+                ? 2.0
                 : heldFor < 2
-                    ? 7
-                    : 10;
+                    ? 3.5
+                    : 5.5;
 
         /*
          * RELEASE ADAPTATIF
@@ -492,6 +492,21 @@ export class Voice {
             .exponentialRampToValueAtTime(
                 0.0001,
                 now + releaseTime
+            );
+
+        this.reverbSend?.gain
+            .cancelScheduledValues(now);
+
+        this.reverbSend?.gain
+            .setValueAtTime(
+                Math.max(this.reverbSend.gain.value, 0.0001),
+                now
+            );
+
+        this.reverbSend?.gain
+            .exponentialRampToValueAtTime(
+                0.0001,
+                now + Math.min(releaseTime, 3.5)
             );
 
 
