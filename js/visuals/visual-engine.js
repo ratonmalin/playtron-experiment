@@ -839,6 +839,7 @@ export class VisualEngine {
         }
 
         const rings = this.volumeGeometry;
+        const renderStep = Math.max(2, Math.ceil(rings.length / 14));
         const center = rings.reduce(
             (sum, ring) => {
                 for (const point of ring) {
@@ -866,7 +867,7 @@ export class VisualEngine {
         // Each sampled trajectory becomes a longitudinal edge. Connecting
         // equal moments in those trajectories creates a real surface from
         // the movement, rather than imposing a triangle/square/spiral.
-        for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex++) {
+        for (let ringIndex = 0; ringIndex < rings.length - 1; ringIndex += renderStep) {
             const a = rings[ringIndex];
             const b = rings[ringIndex + 1];
             const count = Math.min(a.length, b.length);
@@ -888,7 +889,7 @@ export class VisualEngine {
         }
 
         const drawLayer = (scale, offsetX, offsetY, alphaMultiplier) => {
-            for (let ringIndex = 0; ringIndex < rings.length; ringIndex += 2) {
+            for (let ringIndex = 0; ringIndex < rings.length; ringIndex += renderStep) {
                 const ring = rings[ringIndex];
                 if (ring.length < 2) continue;
 
@@ -916,7 +917,7 @@ export class VisualEngine {
         drawLayer(frontScale, 0, 0, 1);
 
         // Connect selected corresponding trajectory points through depth.
-        const stride = Math.max(1, Math.floor(rings.length / 8));
+        const stride = Math.max(renderStep, Math.floor(rings.length / 7));
         for (let ringIndex = 0; ringIndex < rings.length; ringIndex += stride) {
             const ring = rings[ringIndex];
             for (const point of ring) {
