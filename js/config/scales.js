@@ -85,34 +85,27 @@ export class ScaleManager {
         const octave = Math.floor(relative / 12);
         const pitchClass = ((relative % 12) + 12) % 12;
 
-        let nearest = null;
+        let nearestNote = null;
+        let nearestDistance = Infinity;
 
-        for (const interval of intervals) {
-            const candidate = interval - pitchClass;
+        for (const octaveOffset of [-1, 0, 1]) {
+            for (const interval of intervals) {
+                const candidate =
+                    ROOT_NOTE +
+                    (octave + octaveOffset) * 12 +
+                    interval;
 
-            if (
-                nearest === null ||
-                Math.abs(candidate) < Math.abs(nearest)
-            ) {
-                nearest = candidate;
+                const distance =
+                    Math.abs(candidate - note);
+
+                if (distance < nearestDistance) {
+                    nearestNote = candidate;
+                    nearestDistance = distance;
+                }
             }
         }
 
-        const lower =
-            ROOT_NOTE +
-            octave * 12 +
-            pitchClass +
-            nearest;
-
-        const upper =
-            lower +
-            (nearest >= 0 ? 0 : 12);
-
-        if (Math.abs(upper - note) < Math.abs(lower - note)) {
-            return upper;
-        }
-
-        return lower;
+        return nearestNote;
     }
 
     resetHeldNotes() {
