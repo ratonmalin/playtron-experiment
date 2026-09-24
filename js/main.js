@@ -44,6 +44,9 @@ const scaledInputBus = {
     }
 };
 
+const keyboardElement = document.querySelector("#keyboard");
+const lastEventElement = document.querySelector("#last-event");
+
 const keyboard = new KeyboardInput(scaledInputBus);
 const touch = new TouchInput(
     scaledInputBus,
@@ -53,9 +56,6 @@ const touch = new TouchInput(
 const audioEngine = new AudioEngine(eventBus);
 const midiInput = new MidiInput(scaledInputBus);
 const visualEngine = new VisualEngine(eventBus);
-
-const keyboardElement = document.querySelector("#keyboard");
-const lastEventElement = document.querySelector("#last-event");
 
 const fullscreenButton = document.querySelector("#fullscreen-button");
 const scaleButton = document.querySelector("#scale-button");
