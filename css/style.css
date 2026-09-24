@@ -19,6 +19,7 @@ body {
 }
 
 body {
+    position: relative;
     color: var(--foreground);
     font-family:
         Inter,
@@ -28,6 +29,25 @@ body {
         "Segoe UI",
         sans-serif;
     overflow-x: hidden;
+}
+
+.app::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+        radial-gradient(
+            circle at 50% 45%,
+            rgba(213, 165, 91, 0.035),
+            transparent 48%
+        ),
+        radial-gradient(
+            circle at 50% 50%,
+            transparent 52%,
+            rgba(0, 0, 0, 0.46) 100%
+        );
 }
 
 .app {
@@ -160,11 +180,12 @@ h1 {
     bottom: 76px;
     z-index: 2;
     color: #ffffff;
-    opacity: 0.72;
+    opacity: 0.52;
 }
 
 .technical-footer {
     display: block;
+    pointer-events: none;
 }
 
 .mapping {
@@ -181,7 +202,7 @@ h1 {
 .mapping-item {
     color: #ffffff;
     font-size: 7px;
-    opacity: 0.55;
+    opacity: 0.46;
 }
 
 .about {
@@ -249,6 +270,10 @@ h1 {
     .technical-footer {
         left: 18px;
         right: 18px;
-        bottom: 22px;
+        bottom: 72px;
+    }
+
+    .about {
+        gap: 10px;
     }
 }
