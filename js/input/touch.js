@@ -1,8 +1,9 @@
 export class TouchInput {
-    constructor(eventBus, element, keyboardMapping) {
+    constructor(eventBus, keyboardElement, keyboardMapping) {
         this.eventBus = eventBus;
-        this.element = element;
+        this.keyboardElement = keyboardElement;
         this.keyboardMapping = keyboardMapping;
+        this.notes = Object.values(keyboardMapping);
         this.activePointers = new Map();
 
         this.handlePointerDown = this.handlePointerDown.bind(this);
@@ -12,42 +13,40 @@ export class TouchInput {
     }
 
     start() {
-        if (!this.element) return;
-
-        this.element.addEventListener(
+        document.addEventListener(
             "pointerdown",
-            this.handlePointerDown
+            this.handlePointerDown,
+            { passive: false }
         );
-        this.element.addEventListener(
+        document.addEventListener(
             "pointermove",
-            this.handlePointerMove
+            this.handlePointerMove,
+            { passive: false }
         );
-        this.element.addEventListener(
+        document.addEventListener(
             "pointerup",
             this.handlePointerUp
         );
-        this.element.addEventListener(
+        document.addEventListener(
             "pointercancel",
             this.handlePointerCancel
         );
     }
 
     stop() {
-        if (!this.element) return;
-
-        this.element.removeEventListener(
+        document.removeEventListener(
             "pointerdown",
             this.handlePointerDown
         );
-        this.element.removeEventListener(
+        document.removeEventListener(
             "pointermove",
             this.handlePointerMove
         );
-        this.element.removeEventListener(
+        document.removeEventListener(
             "pointerup",
             this.handlePointerUp
         );
-        this.element.removeEventListener(
+        document.removeEventListener(
             "pointercancel",
             this.handlePointerCancel
         );
@@ -57,29 +56,18 @@ export class TouchInput {
 
     handlePointerDown(event) {
         if (event.pointerType !== "touch") return;
+        if (this.isInterfaceControl(event.target)) return;
 
-        const keyElement = this.getKeyAtPoint(
-            event.clientX,
-            event.clientY
-        );
+        const note = this.getNoteAtX(event.clientX);
 
-        if (!keyElement) return;
+        if (note === null) return;
 
         event.preventDefault();
 
-        try {
-            this.element.setPointerCapture(event.pointerId);
-        } catch {}
-
-        const key = keyElement.dataset.key;
-        const note = this.keyboardMapping[key];
-
-        if (note === undefined) return;
-
-        this.activePointers.set(event.pointerId, {
-            key,
-            note
-        });
+        this.activePointers.set(
+            event.pointerId,
+            { note }
+        );
 
         this.emitNoteOn(note);
     }
@@ -87,30 +75,22 @@ export class TouchInput {
     handlePointerMove(event) {
         if (event.pointerType !== "touch") return;
 
-        const active = this.activePointers.get(event.pointerId);
+        const active =
+            this.activePointers.get(event.pointerId);
 
         if (!active) return;
 
-        const keyElement = this.getKeyAtPoint(
-            event.clientX,
-            event.clientY
-        );
+        const note =
+            this.getNoteAtX(event.clientX);
 
-        if (!keyElement) return;
-
-        const key = keyElement.dataset.key;
-
-        if (key === active.key) return;
-
-        const note = this.keyboardMapping[key];
-
-        if (note === undefined) return;
+        if (note === null || note === active.note) {
+            return;
+        }
 
         event.preventDefault();
 
         this.emitNoteOff(active.note);
 
-        active.key = key;
         active.note = note;
 
         this.emitNoteOn(note);
@@ -144,6 +124,45 @@ export class TouchInput {
         }
     }
 
+    getNoteAtX(clientX) {
+        if (!this.keyboardElement || this.notes.length === 0) {
+            return null;
+        }
+
+        const rect =
+            this.keyboardElement.getBoundingClientRect();
+
+        if (rect.width <= 0) return null;
+
+        const normalized =
+            Math.max(
+                0,
+                Math.min(
+                    0.999999,
+                    (clientX - rect.left) / rect.width
+                )
+            );
+
+        const index =
+            Math.floor(
+                normalized * this.notes.length
+            );
+
+        return this.notes[index] ?? null;
+    }
+
+    isInterfaceControl(target) {
+        if (!(target instanceof Element)) {
+            return false;
+        }
+
+        return Boolean(
+            target.closest(
+                "button, a, input, textarea, select"
+            )
+        );
+    }
+
     emitNoteOn(note) {
         this.eventBus.emit({
             type: "noteon",
@@ -164,14 +183,5 @@ export class TouchInput {
             source: "touch",
             timestamp: performance.now()
         });
-    }
-
-    getKeyAtPoint(x, y) {
-        const element =
-            document.elementFromPoint(x, y);
-
-        if (!element) return null;
-
-        return element.closest(".key");
     }
 }
