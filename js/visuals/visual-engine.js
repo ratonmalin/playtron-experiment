@@ -59,17 +59,21 @@ export class VisualEngine {
     }
 
     createIdleBodies() {
-        this.idleBodies = Array.from({ length: 9 }, (_, index) => ({
-            angle: index * 1.2566,
-            radius: 90 + index * 58,
-            speed: 0.018 + index * 0.0035,
-            size: 2.5 + (index % 3) * 1.2,
-            phase: index * 1.7
+        this.idleBodies = Array.from({ length: 12 }, (_, index) => ({
+            angle: index * (Math.PI * 2 / 12),
+            radius: 105 + index * 46,
+            speed: 0.014 + index * 0.0028,
+            size: 2.8 + (index % 4) * 1.1,
+            phase: index * 1.37
         }));
     }
 
     getBodyId(event) {
         return `${event.source}-${event.channel}-${event.note}`;
+    }
+
+    getNoteHue(note) {
+        return ((note - 48) * 27.6923076923 + 195) % 360;
     }
 
     onNoteOn(event) {
@@ -87,7 +91,7 @@ export class VisualEngine {
             velocity: event.velocity,
             angle: ((event.note * 47) % 360) * Math.PI / 180,
             phase: (event.note * 0.71) % (Math.PI * 2),
-            hue: ((event.note - 48) / 31) * 300 + 20,
+            hue: this.getNoteHue(event.note),
             duration: null,
             x: innerWidth * (0.5 + Math.sin(event.note * 1.73) * 0.25),
             y: innerHeight * (0.47 + Math.cos(event.note * 1.17) * 0.20),
@@ -116,7 +120,7 @@ export class VisualEngine {
             energy: item.velocity
         });
 
-        if (this.memory.length > 180) {
+        if (this.memory.length > 240) {
             this.memory.shift();
         }
     }
@@ -242,12 +246,13 @@ export class VisualEngine {
             }
 
             if (item.releasedAt) {
-                const release =
-                    Math.min(1, (now - item.releasedAt) / 2400);
+                const releaseProgress =
+                    Math.min(1, (now - item.releasedAt) / 5200);
 
-                item.releaseLife = 1 - release;
+                item.releaseLife =
+                    1 - (releaseProgress * releaseProgress * (3 - 2 * releaseProgress));
 
-                if (release >= 1) {
+                if (releaseProgress >= 1) {
                     this.active.delete(item.id);
                 }
             } else {
@@ -257,15 +262,17 @@ export class VisualEngine {
     }
 
     drawMemory(ctx, now) {
+        const memoryLifetime = 120;
+
         const visibleStars = this.memory.filter(star => {
             const age = (now - star.born) / 1000;
-            return age < 28;
+            return age < memoryLifetime;
         });
 
-        for (let i = Math.max(0, visibleStars.length - 28); i < visibleStars.length; i++) {
+        for (let i = 0; i < visibleStars.length; i++) {
             const a = visibleStars[i];
             const ageA = (now - a.born) / 1000;
-            const lifeA = Math.max(0, 1 - ageA / 28);
+            const lifeA = Math.max(0, 1 - ageA / memoryLifetime);
 
             for (let j = i + 1; j < visibleStars.length; j++) {
                 const b = visibleStars[j];
@@ -276,9 +283,9 @@ export class VisualEngine {
                 if (distance > 170) continue;
 
                 const ageB = (now - b.born) / 1000;
-                const lifeB = Math.max(0, 1 - ageB / 28);
+                const lifeB = Math.max(0, 1 - ageB / memoryLifetime);
                 const alpha =
-                    0.035 *
+                    0.055 *
                     lifeA *
                     lifeB *
                     (1 - distance / 170);
@@ -295,19 +302,19 @@ export class VisualEngine {
 
         for (const star of this.memory) {
             const age = (now - star.born) / 1000;
-            const life = Math.max(0, 1 - age / 75);
+            const life = Math.max(0, 1 - age / memoryLifetime);
 
             if (life <= 0) continue;
 
             const radius =
-                1.2 +
-                Math.min(3, star.duration * 0.55) +
-                star.energy * 1.5;
+                1.5 +
+                Math.min(3.5, star.duration * 0.65) +
+                star.energy * 1.6;
 
             ctx.beginPath();
             ctx.arc(star.x, star.y, radius, 0, Math.PI * 2);
             ctx.fillStyle =
-                `hsla(${star.note ? ((star.note - 48) / 31) * 300 + 20 : 42}, 68%, 68%, ${0.34 * life})`;
+                `hsla(${this.getNoteHue(star.note || 48)}, 68%, 68%, ${0.34 * life})`;
             ctx.fill();
 
             if (star.duration > 1.4) {
@@ -349,10 +356,16 @@ export class VisualEngine {
                 0.13 +
                 0.045 * Math.sin(elapsed * 0.6 + body.phase);
 
+            const hue = (195 + body.phase * 82) % 360;
+
+            ctx.beginPath();
+            ctx.arc(x, y, body.size * 5.5, 0, Math.PI * 2);
+            ctx.fillStyle = `hsla(${hue}, 55%, 68%, ${alpha * 0.16})`;
+            ctx.fill();
+
             ctx.beginPath();
             ctx.arc(x, y, body.size, 0, Math.PI * 2);
-            const hue = 35 + indexHue(body.phase);
-            ctx.fillStyle = `hsla(${hue}, 58%, 66%, ${alpha})`;
+            ctx.fillStyle = `hsla(${hue}, 58%, 68%, ${alpha})`;
             ctx.fill();
         }
     }
@@ -455,7 +468,7 @@ export class VisualEngine {
             }
 
             if (this.memory.length > 180) {
-                this.memory.splice(0, this.memory.length - 180);
+                this.memory.splice(0, this.memory.length - 240);
             }
         }
     }
