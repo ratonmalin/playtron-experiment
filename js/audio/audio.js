@@ -24,19 +24,18 @@ const { Voice } = voiceModule;
 
 const HARMONIC_VOICING = [
     48, // C3
+    50, // D3
     52, // E3
     55, // G3
     57, // A3
-
     60, // C4
+    62, // D4
     64, // E4
     67, // G4
     69, // A4
-
     72, // C5
     76, // E5
-    79, // G5
-    81  // A5
+    79  // G5
 ];
 
 
