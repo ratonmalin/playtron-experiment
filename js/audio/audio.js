@@ -1,38 +1,44 @@
+```js
+/*
+ * AUDIO ENGINE
+ *
+ * Le MIDI entrant ne joue pas directement
+ * la hauteur reçue.
+ *
+ * Chaque note MIDI est associée à une note
+ * d'un voicing harmonique doux et resserré.
+ *
+ * Objectif :
+ * - graves perceptibles
+ * - médiums présents
+ * - aigus non stridents
+ * - accords toujours consonants
+ * - sensation de nappe continue
+ */
+
 const VERSION =
     new URL(import.meta.url).searchParams.get("v") || "unknown";
 
-console.log("[AUDIO ENGINE] Loaded version:", VERSION);
-
-const voiceModule =
-    await import(`./voice.js?v=${VERSION}`);
-
-const { Voice } = voiceModule;
+console.log(
+    "[AUDIO ENGINE] Loaded version:",
+    VERSION
+);
 
 
 /*
  * VOICING HARMONIQUE
  *
- * Les notes sont volontairement très espacées.
+ * Registre volontairement resserré.
  *
- * C2  = 36
- * G2  = 43
- * E3  = 52
- * A3  = 57
- * G4  = 67
- * C5  = 72
- * E5  = 76
- * A5  = 81
- * C6  = 84
- * G6  = 91
- * E7  = 100
- * A7  = 105
+ * Ancien registre :
+ * C2 → A7
  *
- * Toutes les notes appartiennent à une couleur
- * C majeur / Am6-9 très ouverte.
+ * Nouveau registre :
+ * C3 → A5
  *
- * L'objectif n'est plus de reproduire
- * exactement la hauteur MIDI entrante :
- * le MIDI devient un contrôleur de voix.
+ * Les notes sont issues de C majeur / Am
+ * et sont suffisamment espacées pour éviter
+ * les frottements trop évidents.
  */
 
 const HARMONIC_VOICING = [
@@ -40,10 +46,12 @@ const HARMONIC_VOICING = [
     52, // E3
     55, // G3
     57, // A3
+
     60, // C4
     64, // E4
     67, // G4
     69, // A4
+
     72, // C5
     76, // E5
     79, // G5
@@ -52,14 +60,6 @@ const HARMONIC_VOICING = [
 
 
 function getHarmonicNote(midiNote) {
-
-    /*
-     * On utilise la note MIDI comme index
-     * dans le voicing.
-     *
-     * Les 12 touches du clavier correspondent
-     * donc aux 12 positions harmoniques.
-     */
 
     const index =
         ((midiNote - 60) % HARMONIC_VOICING.length
@@ -92,6 +92,7 @@ export class AudioEngine {
         this.handleEvent =
             this.handleEvent.bind(this);
 
+
         eventBus.on(
             "noteon",
             this.handleEvent
@@ -102,6 +103,7 @@ export class AudioEngine {
             this.handleEvent
         );
 
+
         console.log(
             "[AUDIO ENGINE] Constructor version:",
             VERSION
@@ -111,6 +113,10 @@ export class AudioEngine {
 
     async start() {
 
+        /*
+         * CRÉATION DU CONTEXTE AUDIO
+         */
+
         if (!this.audioContext) {
 
             const AudioContext =
@@ -118,17 +124,19 @@ export class AudioEngine {
                 window.webkitAudioContext;
 
             if (!AudioContext) {
+
                 throw new Error(
                     "Web Audio API indisponible."
                 );
             }
+
 
             this.audioContext =
                 new AudioContext();
 
 
             /*
-             * MASTER
+             * MASTER GAIN
              */
 
             this.masterGain =
@@ -139,7 +147,13 @@ export class AudioEngine {
 
 
             /*
-             * COMPRESSEUR TRÈS LÉGER
+             * COMPRESSEUR
+             *
+             * Très léger.
+             *
+             * Son rôle est simplement
+             * d'éviter que plusieurs notes
+             * simultanées deviennent trop fortes.
              */
 
             this.compressor =
@@ -162,8 +176,16 @@ export class AudioEngine {
                 1.2;
 
 
+            /*
+             * REVERB
+             */
+
             this.createReverb();
 
+
+            /*
+             * ROUTING MASTER
+             */
 
             this.masterGain.connect(
                 this.compressor
@@ -174,6 +196,11 @@ export class AudioEngine {
             );
         }
 
+
+        /*
+         * REPRISE DU CONTEXTE APRÈS
+         * L'INTERACTION UTILISATEUR
+         */
 
         if (
             this.audioContext.state ===
@@ -197,6 +224,7 @@ export class AudioEngine {
 
         this.started = true;
 
+
         console.log(
             "[AUDIO ENGINE] Running version:",
             VERSION
@@ -209,12 +237,20 @@ export class AudioEngine {
         const context =
             this.audioContext;
 
+
+        /*
+         * ENTRÉE REVERB
+         */
+
         this.reverbInput =
             context.createGain();
 
 
         /*
-         * REVERB TRÈS LONGUE
+         * IMPULSE
+         *
+         * Reverb très longue :
+         * 14 secondes.
          */
 
         const duration = 14.0;
@@ -236,6 +272,10 @@ export class AudioEngine {
                 sampleRate
             );
 
+
+        /*
+         * CRÉATION DE L'IMPULSE STÉRÉO
+         */
 
         for (
             let channel = 0;
@@ -259,6 +299,10 @@ export class AudioEngine {
                     i / sampleRate;
 
 
+                /*
+                 * ENVELOPPE DE DÉCROISSANCE
+                 */
+
                 const envelope =
                     Math.pow(
                         1 - time / duration,
@@ -267,13 +311,17 @@ export class AudioEngine {
 
 
                 /*
-                 * Diffusion légèrement irrégulière
-                 * pour éviter un decay trop artificiel.
+                 * BRUIT DE BASE
                  */
 
                 const noise =
                     Math.random() * 2 - 1;
 
+
+                /*
+                 * LÉGÈRE DIFFÉRENCE
+                 * ENTRE GAUCHE ET DROITE
+                 */
 
                 const stereo =
                     channel === 0
@@ -289,6 +337,10 @@ export class AudioEngine {
         }
 
 
+        /*
+         * CONVOLVER
+         */
+
         this.reverb =
             context.createConvolver();
 
@@ -296,20 +348,23 @@ export class AudioEngine {
             impulse;
 
 
+        /*
+         * VOLUME DE LA REVERB
+         */
+
         this.reverbGain =
             context.createGain();
-
-        /*
-         * Beaucoup plus de signal wet.
-         */
 
         this.reverbGain.gain.value =
             0.92;
 
 
         /*
-         * Filtre de la reverb :
-         * on retire les aigus agressifs.
+         * FILTRE DE REVERB
+         *
+         * On coupe les très hautes fréquences
+         * pour éviter une queue brillante
+         * et stridente.
          */
 
         const reverbFilter =
@@ -319,11 +374,15 @@ export class AudioEngine {
             "lowpass";
 
         reverbFilter.frequency.value =
-            2600;
+            2400;
 
         reverbFilter.Q.value =
             0.2;
 
+
+        /*
+         * ROUTING REVERB
+         */
 
         this.reverbInput.connect(
             this.reverb
@@ -345,15 +404,28 @@ export class AudioEngine {
 
     handleEvent(event) {
 
+        /*
+         * Aucun son avant activation
+         * explicite de l'AudioContext.
+         */
+
         if (!this.started) {
             return;
         }
 
-        if (event.type === "noteon") {
+
+        if (
+            event.type === "noteon"
+        ) {
+
             this.noteOn(event);
         }
 
-        if (event.type === "noteoff") {
+
+        if (
+            event.type === "noteoff"
+        ) {
+
             this.noteOff(event);
         }
     }
@@ -361,30 +433,40 @@ export class AudioEngine {
 
     noteOn(event) {
 
+        /*
+         * Conversion du MIDI entrant
+         * vers notre espace harmonique.
+         */
+
         const audioNote =
-            getHarmonicNote(event.note);
+            getHarmonicNote(
+                event.note
+            );
 
 
         /*
-         * Chaque note MIDI possède désormais
-         * une place précise dans le voicing.
+         * Une même note provenant
+         * d'une même source ne peut
+         * pas créer deux voix simultanées.
          */
 
         const voiceId =
             `${event.source}-${event.note}`;
 
 
-        /*
-         * Si la même touche est maintenue,
-         * on ne crée pas plusieurs voix.
-         */
-
         if (
-            this.activeVoices.has(voiceId)
+            this.activeVoices.has(
+                voiceId
+            )
         ) {
+
             return;
         }
 
+
+        /*
+         * CRÉATION DE LA VOIX
+         */
 
         const voice =
             new Voice(
@@ -425,13 +507,25 @@ export class AudioEngine {
         }
 
 
+        /*
+         * La voix disparaît lentement.
+         */
+
         voice.release();
+
 
         this.activeVoices.delete(
             voiceId
         );
     }
 
+
+    /*
+     * ARRÊT D'URGENCE
+     *
+     * Utile si plusieurs notes restent
+     * accidentellement actives.
+     */
 
     panic() {
 
@@ -443,15 +537,21 @@ export class AudioEngine {
             voice.release();
         }
 
+
         this.activeVoices.clear();
     }
 
+
+    /*
+     * REPRISE DU CONTEXTE AUDIO
+     */
 
     async resume() {
 
         if (!this.audioContext) {
             return;
         }
+
 
         if (
             this.audioContext.state ===
@@ -462,3 +562,4 @@ export class AudioEngine {
         }
     }
 }
+```
