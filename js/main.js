@@ -158,6 +158,10 @@ eventBus.on("noteon", event => {
 
     updateKeyboardKey(event);
     displayEvent(event);
+
+    if (statusElement && event.type === "noteon") {
+        statusElement.textContent = "LIVE";
+    }
 });
 
 
