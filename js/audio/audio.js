@@ -3,11 +3,71 @@ const VERSION =
 
 console.log("[AUDIO ENGINE] Loaded version:", VERSION);
 
-
 const voiceModule =
     await import(`./voice.js?v=${VERSION}`);
 
 const { Voice } = voiceModule;
+
+
+/*
+ * VOICING HARMONIQUE
+ *
+ * Les notes sont volontairement très espacées.
+ *
+ * C2  = 36
+ * G2  = 43
+ * E3  = 52
+ * A3  = 57
+ * G4  = 67
+ * C5  = 72
+ * E5  = 76
+ * A5  = 81
+ * C6  = 84
+ * G6  = 91
+ * E7  = 100
+ * A7  = 105
+ *
+ * Toutes les notes appartiennent à une couleur
+ * C majeur / Am6-9 très ouverte.
+ *
+ * L'objectif n'est plus de reproduire
+ * exactement la hauteur MIDI entrante :
+ * le MIDI devient un contrôleur de voix.
+ */
+
+const HARMONIC_VOICING = [
+    36,
+    43,
+    52,
+    57,
+    67,
+    72,
+    76,
+    81,
+    84,
+    91,
+    100,
+    105
+];
+
+
+function getHarmonicNote(midiNote) {
+
+    /*
+     * On utilise la note MIDI comme index
+     * dans le voicing.
+     *
+     * Les 12 touches du clavier correspondent
+     * donc aux 12 positions harmoniques.
+     */
+
+    const index =
+        ((midiNote - 60) % HARMONIC_VOICING.length
+            + HARMONIC_VOICING.length)
+        % HARMONIC_VOICING.length;
+
+    return HARMONIC_VOICING[index];
+}
 
 
 export class AudioEngine {
@@ -58,7 +118,6 @@ export class AudioEngine {
                 window.webkitAudioContext;
 
             if (!AudioContext) {
-
                 throw new Error(
                     "Web Audio API indisponible."
                 );
@@ -68,20 +127,39 @@ export class AudioEngine {
                 new AudioContext();
 
 
+            /*
+             * MASTER
+             */
+
             this.masterGain =
                 this.audioContext.createGain();
 
-            this.masterGain.gain.value = 0.55;
+            this.masterGain.gain.value =
+                0.42;
 
+
+            /*
+             * COMPRESSEUR TRÈS LÉGER
+             */
 
             this.compressor =
-                this.audioContext.createDynamicsCompressor();
+                this.audioContext
+                    .createDynamicsCompressor();
 
-            this.compressor.threshold.value = -20;
-            this.compressor.knee.value = 25;
-            this.compressor.ratio.value = 2;
-            this.compressor.attack.value = 0.04;
-            this.compressor.release.value = 0.5;
+            this.compressor.threshold.value =
+                -24;
+
+            this.compressor.knee.value =
+                30;
+
+            this.compressor.ratio.value =
+                1.5;
+
+            this.compressor.attack.value =
+                0.08;
+
+            this.compressor.release.value =
+                1.2;
 
 
             this.createReverb();
@@ -135,8 +213,12 @@ export class AudioEngine {
             context.createGain();
 
 
-        const duration = 7.0;
-        const decay = 3.8;
+        /*
+         * REVERB TRÈS LONGUE
+         */
+
+        const duration = 14.0;
+        const decay = 4.5;
 
         const sampleRate =
             context.sampleRate;
@@ -176,19 +258,28 @@ export class AudioEngine {
                 const time =
                     i / sampleRate;
 
+
                 const envelope =
                     Math.pow(
                         1 - time / duration,
                         decay
                     );
 
+
+                /*
+                 * Diffusion légèrement irrégulière
+                 * pour éviter un decay trop artificiel.
+                 */
+
                 const noise =
                     Math.random() * 2 - 1;
+
 
                 const stereo =
                     channel === 0
                         ? 1
-                        : 0.88;
+                        : 0.92;
+
 
                 data[i] =
                     noise *
@@ -208,9 +299,18 @@ export class AudioEngine {
         this.reverbGain =
             context.createGain();
 
-        this.reverbGain.gain.value =
-            0.62;
+        /*
+         * Beaucoup plus de signal wet.
+         */
 
+        this.reverbGain.gain.value =
+            0.92;
+
+
+        /*
+         * Filtre de la reverb :
+         * on retire les aigus agressifs.
+         */
 
         const reverbFilter =
             context.createBiquadFilter();
@@ -219,10 +319,10 @@ export class AudioEngine {
             "lowpass";
 
         reverbFilter.frequency.value =
-            3200;
+            2600;
 
         reverbFilter.Q.value =
-            0.25;
+            0.2;
 
 
         this.reverbInput.connect(
@@ -261,20 +361,41 @@ export class AudioEngine {
 
     noteOn(event) {
 
+        const audioNote =
+            getHarmonicNote(event.note);
+
+
+        /*
+         * Chaque note MIDI possède désormais
+         * une place précise dans le voicing.
+         */
+
+        const voiceId =
+            `${event.source}-${event.note}`;
+
+
+        /*
+         * Si la même touche est maintenue,
+         * on ne crée pas plusieurs voix.
+         */
+
+        if (
+            this.activeVoices.has(voiceId)
+        ) {
+            return;
+        }
+
+
         const voice =
             new Voice(
                 this.audioContext,
                 this.masterGain,
                 this.reverbInput,
                 {
-                    note: event.note,
+                    note: audioNote,
                     velocity: event.velocity
                 }
             );
-
-
-        const voiceId =
-            `${event.source}-${event.note}-${event.timestamp}`;
 
 
         this.activeVoices.set(
@@ -289,29 +410,26 @@ export class AudioEngine {
 
     noteOff(event) {
 
-        /*
-         * Pour cette étape, on libère les voix
-         * correspondant à la note reçue.
-         */
+        const voiceId =
+            `${event.source}-${event.note}`;
 
-        for (
-            const [voiceId, voice]
-            of this.activeVoices
-        ) {
 
-            if (
-                voice.note === event.note
-            ) {
+        const voice =
+            this.activeVoices.get(
+                voiceId
+            );
 
-                voice.release();
 
-                this.activeVoices.delete(
-                    voiceId
-                );
-
-                break;
-            }
+        if (!voice) {
+            return;
         }
+
+
+        voice.release();
+
+        this.activeVoices.delete(
+            voiceId
+        );
     }
 
 
