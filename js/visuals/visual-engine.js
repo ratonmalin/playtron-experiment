@@ -480,10 +480,47 @@ export class VisualEngine {
             }
         }
 
-        // Three-note motion stays purely in the active bodies.
-        // Do not inject memory particles at the center: that creates an
-        // artificial visual mass and breaks the constellation aesthetic.
+        // Three-note systems use only the active stars.
+        // No central bloom or particle mass is created.
 
+        if (items.length >= 3) {
+            const linked = new Set();
+
+            for (const item of items) {
+                let nearest = null;
+                let nearestDistance = Infinity;
+
+                for (const other of items) {
+                    if (other === item) continue;
+
+                    const distance = Math.hypot(
+                        other.x - item.x,
+                        other.y - item.y
+                    );
+
+                    if (distance < nearestDistance) {
+                        nearestDistance = distance;
+                        nearest = other;
+                    }
+                }
+
+                if (!nearest || nearestDistance > 300) continue;
+
+                const pairKey = [item.id, nearest.id].sort().join(":");
+                if (linked.has(pairKey)) continue;
+                linked.add(pairKey);
+
+                const alpha =
+                    0.16 * (1 - nearestDistance / 300);
+
+                ctx.beginPath();
+                ctx.moveTo(item.x, item.y);
+                ctx.lineTo(nearest.x, nearest.y);
+                ctx.strokeStyle =
+                    `rgba(190, 210, 235, ${alpha})`;
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+            }
         }
     }
 
