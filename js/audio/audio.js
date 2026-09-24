@@ -8,10 +8,10 @@ import { Voice } from "./voice.js";
  *
  * C major pentatonic:
  *
- * C  D  E  G  A
+ * C - D - E - G - A
  *
- * Les notes MIDI entrantes sont quantifiées vers cette
- * échelle avant d'être envoyées au synthé.
+ * Toutes les notes entrantes sont quantifiées vers
+ * cette gamme avant d'être jouées.
  */
 
 const PENTATONIC =
@@ -85,7 +85,10 @@ export class AudioEngine {
         this.reverbInput =
             null;
 
-        this.reverbOutput =
+        this.reverb =
+            null;
+
+        this.reverbGain =
             null;
 
         this.activeVoices =
@@ -133,7 +136,7 @@ export class AudioEngine {
 
             /*
              * =================================================
-             * MASTER
+             * MASTER GAIN
              * =================================================
              */
 
@@ -141,17 +144,16 @@ export class AudioEngine {
                 this.audioContext.createGain();
 
             this.masterGain.gain.value =
-                0.65;
+                0.55;
 
 
             /*
              * =================================================
-             * COMPRESSOR
+             * MASTER COMPRESSOR
              * =================================================
              *
-             * Très léger.
-             * Il évite que plusieurs voix simultanées
-             * provoquent des pics désagréables.
+             * Protection légère contre les accumulations
+             * de nombreuses voix.
              */
 
             this.compressor =
@@ -160,19 +162,19 @@ export class AudioEngine {
 
 
             this.compressor.threshold.value =
-                -18;
+                -20;
 
             this.compressor.knee.value =
-                20;
+                25;
 
             this.compressor.ratio.value =
-                3;
+                2;
 
             this.compressor.attack.value =
-                0.02;
+                0.04;
 
             this.compressor.release.value =
-                0.35;
+                0.5;
 
 
             /*
@@ -237,149 +239,171 @@ export class AudioEngine {
 
 
         /*
-         * Le signal de chaque voix entre ici.
+         * =================================================
+         * REVERB INPUT
+         * =================================================
          */
 
         this.reverbInput =
             context.createGain();
 
-        this.reverbOutput =
-            context.createGain();
-
-
-        this.reverbOutput.gain.value =
-            0.75;
-
 
         /*
-         * Plusieurs délais très courts créent une
-         * réverbération dense de type ambient.
+         * =================================================
+         * CONVOLUTION REVERB
+         * =================================================
+         *
+         * On génère une impulse response directement
+         * dans le navigateur.
          */
 
-        const delays = [
-            0.071,
-            0.113,
-            0.173,
-            0.227,
-            0.311
-        ];
+        const duration =
+            7.0;
+
+        const decay =
+            3.8;
+
+        const sampleRate =
+            context.sampleRate;
+
+        const length =
+            Math.floor(
+                sampleRate * duration
+            );
 
 
-        delays.forEach(
-            (delayTime, index) => {
-
-                const delay =
-                    context.createDelay(1.0);
-
-                const feedback =
-                    context.createGain();
-
-                const filter =
-                    context.createBiquadFilter();
+        const impulse =
+            context.createBuffer(
+                2,
+                length,
+                sampleRate
+            );
 
 
-                delay.delayTime.value =
-                    delayTime;
+        for (
+            let channel = 0;
+            channel < 2;
+            channel++
+        ) {
+
+            const data =
+                impulse.getChannelData(
+                    channel
+                );
+
+
+            for (
+                let i = 0;
+                i < length;
+                i++
+            ) {
+
+                const time =
+                    i / sampleRate;
 
 
                 /*
-                 * Feedback différent pour chaque ligne.
+                 * Bruit décroissant.
+                 *
+                 * Les hautes fréquences disparaissent
+                 * progressivement grâce au facteur de decay.
                  */
 
-                feedback.gain.value =
-                    0.28 -
-                    index * 0.025;
+                const envelope =
+                    Math.pow(
+                        1 - time / duration,
+                        decay
+                    );
+
+
+                const noise =
+                    (
+                        Math.random() * 2
+                    ) - 1;
 
 
                 /*
-                 * On coupe les aigus de la reverb.
-                 * Cela donne une queue plus douce.
+                 * Différence légère entre les canaux
+                 * pour créer une impression stéréo.
                  */
 
-                filter.type =
-                    "lowpass";
+                const stereo =
+                    channel === 0
+                        ? 1
+                        : 0.88;
 
-                filter.frequency.value =
-                    2600;
 
-
-                this.reverbInput.connect(
-                    delay
-                );
-
-                delay.connect(
-                    filter
-                );
-
-                filter.connect(
-                    feedback
-                );
-
-                feedback.connect(
-                    delay
-                );
-
-                filter.connect(
-                    this.reverbOutput
-                );
+                data[i] =
+                    noise *
+                    envelope *
+                    stereo;
             }
-        );
+        }
+
+
+        this.reverb =
+            context.createConvolver();
+
+
+        this.reverb.buffer =
+            impulse;
 
 
         /*
-         * Une petite ligne supplémentaire très longue
-         * pour donner de la profondeur.
+         * =================================================
+         * REVERB GAIN
+         * =================================================
          */
 
-        const longDelay =
-            context.createDelay(1.0);
-
-        const longFeedback =
+        this.reverbGain =
             context.createGain();
 
-        const longFilter =
+
+        this.reverbGain.gain.value =
+            0.62;
+
+
+        /*
+         * =================================================
+         * REVERB FILTER
+         *
+         * On retire une partie des aigus pour obtenir
+         * une reverb chaude plutôt que métallique.
+         */
+
+        const reverbFilter =
             context.createBiquadFilter();
 
 
-        longDelay.delayTime.value =
-            0.47;
-
-        longFeedback.gain.value =
-            0.18;
-
-        longFilter.type =
+        reverbFilter.type =
             "lowpass";
 
-        longFilter.frequency.value =
-            1800;
+        reverbFilter.frequency.value =
+            3200;
 
-
-        this.reverbInput.connect(
-            longDelay
-        );
-
-        longDelay.connect(
-            longFilter
-        );
-
-        longFilter.connect(
-            longFeedback
-        );
-
-        longFeedback.connect(
-            longDelay
-        );
-
-        longFilter.connect(
-            this.reverbOutput
-        );
+        reverbFilter.Q.value =
+            0.25;
 
 
         /*
-         * Reverb → master.
+         * =================================================
+         * ROUTING
+         * =================================================
          */
 
-        this.reverbOutput.connect(
+        this.reverbInput.connect(
+            this.reverb
+        );
+
+        this.reverb.connect(
+            reverbFilter
+        );
+
+        reverbFilter.connect(
+            this.reverbGain
+        );
+
+        this.reverbGain.connect(
             this.masterGain
         );
     }
@@ -417,7 +441,8 @@ export class AudioEngine {
          * La note MIDI originale reste intacte dans
          * l'EventBus.
          *
-         * Seule la note utilisée par l'audio est quantifiée.
+         * Seule la note utilisée par le moteur sonore
+         * est quantifiée.
          */
 
         const audioNote =
@@ -427,9 +452,11 @@ export class AudioEngine {
 
 
         /*
-         * Si plusieurs entrées demandent exactement
-         * la même note harmonique, on ne crée pas une
-         * nouvelle voix par-dessus.
+         * Plusieurs entrées peuvent demander la même
+         * note harmonique.
+         *
+         * Pour l'instant, une seule voix est conservée
+         * pour éviter l'accumulation excessive.
          */
 
         if (
