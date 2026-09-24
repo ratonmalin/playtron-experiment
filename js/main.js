@@ -48,9 +48,12 @@ const fullscreenButton = document.querySelector("#fullscreen-button");
 function updateFullscreenButton() {
     if (!fullscreenButton) return;
 
-    fullscreenButton.textContent = document.fullscreenElement
-        ? "EXIT FULLSCREEN"
-        : "FULLSCREEN";
+    fullscreenButton.setAttribute(
+        "aria-label",
+        document.fullscreenElement
+            ? "Quitter le plein écran"
+            : "Passer en plein écran"
+    );
 }
 
 if (fullscreenButton) {
