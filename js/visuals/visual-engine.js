@@ -577,9 +577,9 @@ export class VisualEngine {
         offscreenCtx.textAlign = "center";
         offscreenCtx.textBaseline = "middle";
         offscreenCtx.font =
-            "500 " +
+            "100 " +
             Math.round(92 * scale) +
-            "px Inter, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif";
+            "px Roboto, sans-serif";
 
         const messages = [
             "réveillez-moi",
