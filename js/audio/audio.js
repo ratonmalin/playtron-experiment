@@ -2,18 +2,8 @@
 /*
  * AUDIO ENGINE
  *
- * Le MIDI entrant ne joue pas directement
- * la hauteur reçue.
- *
- * Chaque note MIDI est associée à une note
- * d'un voicing harmonique doux et resserré.
- *
- * Objectif :
- * - graves perceptibles
- * - médiums présents
- * - aigus non stridents
- * - accords toujours consonants
- * - sensation de nappe continue
+ * Le MIDI entrant est transformé en une note
+ * appartenant à un registre harmonique resserré.
  */
 
 const VERSION =
@@ -26,19 +16,28 @@ console.log(
 
 
 /*
+ * IMPORTANT
+ *
+ * On recharge Voice avec la même version
+ * que celle utilisée pour ce module.
+ */
+
+const voiceModule =
+    await import(`./voice.js?v=${VERSION}`);
+
+const { Voice } = voiceModule;
+
+
+/*
  * VOICING HARMONIQUE
  *
- * Registre volontairement resserré.
+ * Registre resserré :
  *
- * Ancien registre :
- * C2 → A7
- *
- * Nouveau registre :
  * C3 → A5
  *
- * Les notes sont issues de C majeur / Am
- * et sont suffisamment espacées pour éviter
- * les frottements trop évidents.
+ * On évite volontairement les extrêmes
+ * qui donnaient l'impression de deux registres
+ * complètement séparés.
  */
 
 const HARMONIC_VOICING = [
@@ -113,10 +112,6 @@ export class AudioEngine {
 
     async start() {
 
-        /*
-         * CRÉATION DU CONTEXTE AUDIO
-         */
-
         if (!this.audioContext) {
 
             const AudioContext =
@@ -136,7 +131,7 @@ export class AudioEngine {
 
 
             /*
-             * MASTER GAIN
+             * MASTER
              */
 
             this.masterGain =
@@ -147,13 +142,7 @@ export class AudioEngine {
 
 
             /*
-             * COMPRESSEUR
-             *
-             * Très léger.
-             *
-             * Son rôle est simplement
-             * d'éviter que plusieurs notes
-             * simultanées deviennent trop fortes.
+             * COMPRESSEUR LÉGER
              */
 
             this.compressor =
@@ -184,7 +173,7 @@ export class AudioEngine {
 
 
             /*
-             * ROUTING MASTER
+             * SORTIE
              */
 
             this.masterGain.connect(
@@ -198,8 +187,7 @@ export class AudioEngine {
 
 
         /*
-         * REPRISE DU CONTEXTE APRÈS
-         * L'INTERACTION UTILISATEUR
+         * REPRENDRE LE CONTEXTE AUDIO
          */
 
         if (
@@ -247,10 +235,7 @@ export class AudioEngine {
 
 
         /*
-         * IMPULSE
-         *
-         * Reverb très longue :
-         * 14 secondes.
+         * REVERB LONGUE
          */
 
         const duration = 14.0;
@@ -272,10 +257,6 @@ export class AudioEngine {
                 sampleRate
             );
 
-
-        /*
-         * CRÉATION DE L'IMPULSE STÉRÉO
-         */
 
         for (
             let channel = 0;
@@ -299,10 +280,6 @@ export class AudioEngine {
                     i / sampleRate;
 
 
-                /*
-                 * ENVELOPPE DE DÉCROISSANCE
-                 */
-
                 const envelope =
                     Math.pow(
                         1 - time / duration,
@@ -310,18 +287,9 @@ export class AudioEngine {
                     );
 
 
-                /*
-                 * BRUIT DE BASE
-                 */
-
                 const noise =
                     Math.random() * 2 - 1;
 
-
-                /*
-                 * LÉGÈRE DIFFÉRENCE
-                 * ENTRE GAUCHE ET DROITE
-                 */
 
                 const stereo =
                     channel === 0
@@ -349,7 +317,7 @@ export class AudioEngine {
 
 
         /*
-         * VOLUME DE LA REVERB
+         * VOLUME REVERB
          */
 
         this.reverbGain =
@@ -362,9 +330,7 @@ export class AudioEngine {
         /*
          * FILTRE DE REVERB
          *
-         * On coupe les très hautes fréquences
-         * pour éviter une queue brillante
-         * et stridente.
+         * On coupe les aigus agressifs.
          */
 
         const reverbFilter =
@@ -381,7 +347,7 @@ export class AudioEngine {
 
 
         /*
-         * ROUTING REVERB
+         * ROUTING
          */
 
         this.reverbInput.connect(
@@ -403,11 +369,6 @@ export class AudioEngine {
 
 
     handleEvent(event) {
-
-        /*
-         * Aucun son avant activation
-         * explicite de l'AudioContext.
-         */
 
         if (!this.started) {
             return;
@@ -433,26 +394,19 @@ export class AudioEngine {
 
     noteOn(event) {
 
-        /*
-         * Conversion du MIDI entrant
-         * vers notre espace harmonique.
-         */
-
         const audioNote =
             getHarmonicNote(
                 event.note
             );
 
 
-        /*
-         * Une même note provenant
-         * d'une même source ne peut
-         * pas créer deux voix simultanées.
-         */
-
         const voiceId =
             `${event.source}-${event.note}`;
 
+
+        /*
+         * Évite les doublons.
+         */
 
         if (
             this.activeVoices.has(
@@ -507,10 +461,6 @@ export class AudioEngine {
         }
 
 
-        /*
-         * La voix disparaît lentement.
-         */
-
         voice.release();
 
 
@@ -519,13 +469,6 @@ export class AudioEngine {
         );
     }
 
-
-    /*
-     * ARRÊT D'URGENCE
-     *
-     * Utile si plusieurs notes restent
-     * accidentellement actives.
-     */
 
     panic() {
 
@@ -541,10 +484,6 @@ export class AudioEngine {
         this.activeVoices.clear();
     }
 
-
-    /*
-     * REPRISE DU CONTEXTE AUDIO
-     */
 
     async resume() {
 
