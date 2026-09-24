@@ -10,6 +10,8 @@ export class VisualEngine {
         this.running = false;
         this.lastInteraction = performance.now();
         this.lastBloom = 0;
+        this.chordStartedAt = 0;
+        this.chordSize = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
@@ -81,6 +83,13 @@ export class VisualEngine {
         const id = this.getBodyId(event);
 
         this.lastInteraction = now;
+
+        const previousCount = this.active.size;
+
+        if (previousCount >= 1) {
+            this.chordStartedAt = now;
+            this.chordSize = Math.min(6, previousCount + 1);
+        }
 
         const idleMessage =
             document.getElementById("idle-message");
@@ -494,85 +503,119 @@ export class VisualEngine {
             }
         }
 
-        // A chord becomes a temporary celestial event.
-        // The geometry remains sparse: the light is concentrated at the
-        // constellation's center instead of creating extra particles.
+        // A chord becomes a short-lived celestial event.
+        // The event is driven by its onset, not by a permanent central glow.
 
         if (items.length >= 2) {
             const center = this.getSystemCenter();
-            const pulse = 0.5 + 0.5 * Math.sin(now / 420);
-            const strength = Math.min(1, (items.length - 1) / 3);
+            const chordAge = this.chordStartedAt
+                ? (now - this.chordStartedAt) / 1000
+                : 10;
 
-            for (let i = 0; i < items.length; i++) {
-                for (let j = i + 1; j < items.length; j++) {
-                    const a = items[i];
-                    const b = items[j];
-                    const distance = Math.hypot(
-                        b.x - a.x,
-                        b.y - a.y
-                    );
+            if (chordAge >= 0 && chordAge < 4.5) {
+                const impact = Math.max(0, 1 - chordAge / 4.5);
+                const pulse =
+                    Math.sin(chordAge * Math.PI * 2.2) * 0.5 + 0.5;
+                const strength =
+                    Math.min(1, (this.chordSize - 1) / 3);
 
-                    if (distance > 360) continue;
+                // The chord briefly illuminates the space between the stars.
+                const fieldRadius =
+                    90 +
+                    strength * 90 +
+                    Math.sin(chordAge * 2.4) * 18;
 
-                    const alpha =
-                        (0.10 + strength * 0.07 + pulse * 0.04) *
-                        (1 - distance / 360);
+                const field = ctx.createRadialGradient(
+                    center.x,
+                    center.y,
+                    0,
+                    center.x,
+                    center.y,
+                    fieldRadius
+                );
 
-                    ctx.beginPath();
-                    ctx.moveTo(a.x, a.y);
-                    ctx.lineTo(b.x, b.y);
-                    ctx.strokeStyle =
-                        `rgba(205, 220, 245, ${alpha})`;
-                    ctx.lineWidth = items.length >= 3 ? 1.1 : 0.8;
-                    ctx.stroke();
-                }
-            }
-
-            const coreRadius =
-                12 +
-                items.length * 4 +
-                pulse * (8 + strength * 10);
-
-            const gradient = ctx.createRadialGradient(
-                center.x,
-                center.y,
-                0,
-                center.x,
-                center.y,
-                coreRadius * 3.5
-            );
-
-            gradient.addColorStop(
-                0,
-                `rgba(240, 246, 255, ${0.10 + strength * 0.08 + pulse * 0.05})`
-            );
-            gradient.addColorStop(
-                0.24,
-                `rgba(205, 225, 255, ${0.035 + strength * 0.025})`
-            );
-            gradient.addColorStop(
-                1,
-                "rgba(205, 225, 255, 0)"
-            );
-
-            ctx.beginPath();
-            ctx.arc(center.x, center.y, coreRadius * 3.5, 0, Math.PI * 2);
-            ctx.fillStyle = gradient;
-            ctx.fill();
-
-            if (items.length >= 3) {
-                const ringRadius =
-                    coreRadius * (1.5 + pulse * 0.7);
+                field.addColorStop(
+                    0,
+                    `rgba(235, 245, 255, ${0.16 * impact})`
+                );
+                field.addColorStop(
+                    0.25,
+                    `rgba(195, 220, 255, ${0.07 * impact})`
+                );
+                field.addColorStop(
+                    1,
+                    "rgba(195, 220, 255, 0)"
+                );
 
                 ctx.beginPath();
-                ctx.arc(center.x, center.y, ringRadius, 0, Math.PI * 2);
+                ctx.arc(center.x, center.y, fieldRadius, 0, Math.PI * 2);
+                ctx.fillStyle = field;
+                ctx.fill();
+
+                // Expanding wave: the visual equivalent of the chord ringing.
+                const waveRadius =
+                    30 + chordAge * (170 + strength * 130);
+                const waveAlpha =
+                    (0.18 + pulse * 0.08) * impact;
+
+                ctx.beginPath();
+                ctx.arc(center.x, center.y, waveRadius, 0, Math.PI * 2);
                 ctx.strokeStyle =
-                    `rgba(220, 232, 250, ${0.08 + pulse * 0.06})`;
-                ctx.lineWidth = 0.8;
+                    `rgba(220, 235, 255, ${waveAlpha})`;
+                ctx.lineWidth = 1.2 + strength * 1.4;
                 ctx.stroke();
+
+                if (items.length >= 3) {
+                    // Three or more notes produce a second, slower wave.
+                    const outerWave =
+                        55 + chordAge * (105 + strength * 95);
+
+                    ctx.beginPath();
+                    ctx.arc(
+                        center.x,
+                        center.y,
+                        outerWave,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.strokeStyle =
+                        `rgba(185, 215, 255, ${0.10 * impact})`;
+                    ctx.lineWidth = 0.9;
+                    ctx.stroke();
+                }
+
+                // Connect every star in the chord: the geometry itself
+                // becomes visible for the duration of the event.
+                for (let i = 0; i < items.length; i++) {
+                    for (let j = i + 1; j < items.length; j++) {
+                        const a = items[i];
+                        const b = items[j];
+                        const distance = Math.hypot(
+                            b.x - a.x,
+                            b.y - a.y
+                        );
+
+                        if (distance > 420) continue;
+
+                        const alpha =
+                            (0.12 + strength * 0.10) *
+                            impact *
+                            (1 - distance / 420);
+
+                        ctx.beginPath();
+                        ctx.moveTo(a.x, a.y);
+                        ctx.lineTo(b.x, b.y);
+                        ctx.strokeStyle =
+                            `rgba(220, 232, 250, ${alpha})`;
+                        ctx.lineWidth = 1 + strength * 0.7;
+                        ctx.stroke();
+                    }
+                }
             }
         }
     }
+
+   }
 
     frame() {
         if (!this.running) return;
