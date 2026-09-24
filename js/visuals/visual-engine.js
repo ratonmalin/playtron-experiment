@@ -602,7 +602,7 @@ export class VisualEngine {
 
         for (const star of this.memory) {
             const age = (now - star.born) / 1000;
-            if (age < 120) {
+            if (age < 300) {
                 origins.push({
                     x: star.x,
                     y: star.y
@@ -683,17 +683,22 @@ export class VisualEngine {
             this.createSleepParticles(now);
         }
 
-        if (idleMessage) {
-            idleMessage.textContent = this.sleepText;
-            idleMessage.classList.add("visible");
-        }
-
         const progress = sleepElapsed % 18;
         const formation = Math.min(1, Math.max(0, (progress - 0.8) / 4.2));
         const formationEase = formation * formation * (3 - 2 * formation);
         const hold = Math.max(0, Math.min(1, (progress - 5) / 5));
         const release = Math.max(0, Math.min(1, (progress - 10) / 7));
         const messageStrength = Math.min(1, formationEase * (1 - release));
+
+        if (idleMessage) {
+            idleMessage.textContent = this.sleepText;
+            idleMessage.classList.add("visible");
+            idleMessage.classList.toggle(
+                "forming",
+                formationEase < 0.92
+            );
+        }
+
         const lastNote = this.memory.length
             ? this.memory[this.memory.length - 1].note
             : 60;
