@@ -33,6 +33,7 @@ export class AudioEngine {
         this.reverb = null;
         this.reverbGain = null;
         this.activeVoices = new Map();
+        this.maxVoices = 16;
         this.started = false;
 
         this.handleEvent = this.handleEvent.bind(this);
@@ -146,6 +147,14 @@ export class AudioEngine {
     }
 
     handleEvent(event) {
+        if (!event || !Number.isFinite(event.note)) {
+            return;
+        }
+
+        if (event.type !== "noteon" && event.type !== "noteoff") {
+            return;
+        }
+
         if (event.type === "noteoff" && !this.started) {
             return;
         }
@@ -174,6 +183,8 @@ export class AudioEngine {
     }
 
     noteOn(event) {
+        if (!this.audioContext || !this.masterGain) return;
+
         const audioNote = getHarmonicNote(event.note);
         const voiceId =
             `${event.source}-${event.channel}-${event.note}`;
@@ -182,14 +193,37 @@ export class AudioEngine {
             return;
         }
 
+        if (this.activeVoices.size >= this.maxVoices) {
+            const oldestId = this.activeVoices.keys().next().value;
+            const oldestVoice = this.activeVoices.get(oldestId);
+
+            if (oldestVoice) {
+                try {
+                    oldestVoice.release();
+                } catch (error) {
+                    console.warn("[AUDIO] Voice limit recovery:", error);
+                }
+            }
+
+            this.activeVoices.delete(oldestId);
+        }
+
+        const velocity = Math.max(
+            0,
+            Math.min(
+                1,
+                Number.isFinite(event.velocity) ? event.velocity : 1
+            )
+        );
+
         const voice =
             new Voice(
                 this.audioContext,
                 this.masterGain,
                 this.reverbInput,
                 {
-                    note: audioNote,
-                    velocity: event.velocity
+                        note: audioNote,
+                    velocity
                 }
             );
 
