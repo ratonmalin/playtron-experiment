@@ -87,7 +87,11 @@ export class VisualEngine {
             velocity: event.velocity,
             angle: ((event.note * 47) % 360) * Math.PI / 180,
             phase: (event.note * 0.71) % (Math.PI * 2),
-            duration: null
+            duration: null,
+            x: innerWidth * (0.5 + Math.sin(event.note * 1.73) * 0.25),
+            y: innerHeight * (0.47 + Math.cos(event.note * 1.17) * 0.20),
+            vx: Math.cos(event.note * 0.83) * 18,
+            vy: Math.sin(event.note * 0.61) * 18
         });
     }
 
@@ -152,29 +156,74 @@ export class VisualEngine {
                 innerHeight * (0.47 + Math.cos(item.note * 1.17) * 0.20);
 
             if (count >= 3) {
-                const chaos = Math.sin(
-                    elapsed * (0.7 + item.note * 0.003) + item.phase
+                const dt = Math.min(
+                    0.033,
+                    Math.max(0.008, (now - (item.lastFrame ?? now)) / 1000)
                 );
 
-                const orbit =
-                    70 +
-                    (item.note % 7) * 17 +
-                    chaos * 24 +
-                    age * 7;
+                let ax = 0;
+                let ay = 0;
 
-                const angle =
-                    item.angle +
-                    age * (0.25 + (item.note % 5) * 0.035) +
-                    Math.sin(elapsed * 0.31 + item.phase) * 0.45;
+                for (const other of items) {
+                    if (other === item) continue;
 
-                item.x =
-                    center.x +
-                    Math.cos(angle) * orbit;
+                    const dx = other.x - item.x;
+                    const dy = other.y - item.y;
+                    const distanceSq = Math.max(
+                        1800,
+                        dx * dx + dy * dy
+                    );
 
-                item.y =
-                    center.y +
-                    Math.sin(angle) * orbit * 0.68;
+                    const distance = Math.sqrt(distanceSq);
+                    const force =
+                        1150 /
+                        distanceSq;
 
+                    ax += (dx / distance) * force * 100;
+                    ay += (dy / distance) * force * 100;
+                }
+
+                const pulse =
+                    Math.sin(elapsed * 0.8 + item.phase) * 4;
+
+                item.vx += (ax + pulse) * dt;
+                item.vy += (ay - pulse * 0.7) * dt;
+
+                const speed = Math.hypot(item.vx, item.vy);
+                const maxSpeed = 150;
+
+                if (speed > maxSpeed) {
+                    item.vx =
+                        (item.vx / speed) * maxSpeed;
+                    item.vy =
+                        (item.vy / speed) * maxSpeed;
+                }
+
+                item.vx *= 0.998;
+                item.vy *= 0.998;
+
+                item.x += item.vx * dt;
+                item.y += item.vy * dt;
+
+                const margin = 80;
+
+                if (item.x < margin || item.x > innerWidth - margin) {
+                    item.vx *= -0.82;
+                    item.x = Math.max(
+                        margin,
+                        Math.min(innerWidth - margin, item.x)
+                    );
+                }
+
+                if (item.y < margin || item.y > innerHeight - margin) {
+                    item.vy *= -0.82;
+                    item.y = Math.max(
+                        margin,
+                        Math.min(innerHeight - margin, item.y)
+                    );
+                }
+
+                item.lastFrame = now;
                 item.chaotic = true;
             } else {
                 const orbit =
