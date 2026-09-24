@@ -16,6 +16,7 @@ export class VisualEngine {
     start() {
         this.canvas = document.createElement("canvas");
         this.canvas.className = "visual-field";
+        this.canvas.style.display = "block";
         this.canvas.setAttribute("aria-hidden", "true");
         document.body.prepend(this.canvas);
         this.ctx = this.canvas.getContext("2d");
@@ -52,7 +53,7 @@ export class VisualEngine {
 
         const ctx = this.ctx;
         const now = performance.now();
-        ctx.fillStyle = "rgba(243, 240, 233, 0.12)";
+        ctx.fillStyle = "rgba(243, 240, 233, 0.045)";
         ctx.fillRect(0, 0, innerWidth, innerHeight);
 
         for (const [note, item] of this.active) {
@@ -61,11 +62,11 @@ export class VisualEngine {
             const life = Math.max(0, 1 - release);
             const x = innerWidth * (0.18 + ((note * 37) % 64) / 100);
             const y = innerHeight * (0.2 + ((note * 17) % 60) / 100);
-            const radius = 42 + age * 18 + item.velocity * 70;
+            const radius = 55 + age * 24 + item.velocity * 90;
 
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-            gradient.addColorStop(0, "rgba(255,255,255," + (0.28 * life) + ")");
-            gradient.addColorStop(0.45, "rgba(210,220,235," + (0.12 * life) + ")");
+            gradient.addColorStop(0, "rgba(255,255,255," + (0.48 * life) + ")");
+            gradient.addColorStop(0.42, "rgba(185,205,235," + (0.22 * life) + ")");
             gradient.addColorStop(1, "rgba(210,220,235,0)");
 
             ctx.fillStyle = gradient;
