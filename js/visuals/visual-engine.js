@@ -582,12 +582,13 @@ export class VisualEngine {
             "px Roboto, sans-serif";
 
         const messages = [
-            "réveillez-moi",
-            "je suis là",
-            "hey"
+            "RÉVEILLEZ-MOI",
+            "JE SUIS LÀ",
+            "HEY"
         ];
 
-        this.sleepText = messages[this.interactionCount % messages.length];
+        this.sleepText =
+            messages[this.sleepCycle % messages.length];
         offscreenCtx.fillText(this.sleepText, width * 0.5, height * 0.5);
 
         const pixels = offscreenCtx.getImageData(0, 0, width, height).data;
