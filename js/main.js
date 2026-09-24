@@ -22,6 +22,9 @@ const {
     midiToNoteName
 } = keyboardModule;
 
+const { ScaleManager } =
+    await import(`./config/scales.js?v=${VERSION}`);
+
 const { EventBus } = eventBusModule;
 const { KeyboardInput } = keyboardInputModule;
 const { AudioEngine } = audioModule;
@@ -29,15 +32,26 @@ const { MidiInput } = midiModule;
 const { VisualEngine } = visualModule;
 
 const eventBus = new EventBus();
-const keyboard = new KeyboardInput(eventBus);
+const scaleManager = new ScaleManager();
+
+const scaledInputBus = {
+    emit(event) {
+        eventBus.emit(
+            scaleManager.transform(event)
+        );
+    }
+};
+
+const keyboard = new KeyboardInput(scaledInputBus);
 const audioEngine = new AudioEngine(eventBus);
-const midiInput = new MidiInput(eventBus);
+const midiInput = new MidiInput(scaledInputBus);
 const visualEngine = new VisualEngine(eventBus);
 
 const keyboardElement = document.querySelector("#keyboard");
 const lastEventElement = document.querySelector("#last-event");
 
 const fullscreenButton = document.querySelector("#fullscreen-button");
+const scaleButton = document.querySelector("#scale-button");
 
 function updateFullscreenButton() {
     if (!fullscreenButton) return;
@@ -48,6 +62,27 @@ function updateFullscreenButton() {
             ? "Quitter le plein écran"
             : "Passer en plein écran"
     );
+}
+
+function updateScaleButton() {
+    if (!scaleButton) return;
+
+    scaleButton.textContent =
+        `GAMME · ${scaleManager.label}`;
+
+    scaleButton.setAttribute(
+        "aria-label",
+        `Changer de gamme · actuelle : ${scaleManager.label}`
+    );
+}
+
+if (scaleButton) {
+    scaleButton.addEventListener("click", () => {
+        scaleManager.next();
+        updateScaleButton();
+    });
+
+    updateScaleButton();
 }
 
 if (fullscreenButton) {
@@ -96,7 +131,11 @@ function updateKeyboardKey(event) {
         return;
     }
 
-    const key = findKeyForNote(event.note);
+    const key = findKeyForNote(
+        Number.isFinite(event.rawNote)
+            ? event.rawNote
+            : event.note
+    );
 
     if (!key) {
         return;
