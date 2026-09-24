@@ -17,6 +17,7 @@ export class VisualEngine {
         this.maxMemoryStars = 180;
         this.lastFrameError = 0;
         this.sleepCycle = -1;
+        this.sleepMessageIndex = -1;
         this.interactionCount = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
@@ -188,7 +189,8 @@ export class VisualEngine {
             x: innerWidth * (0.5 + Math.sin(event.note * 1.73) * 0.25),
             y: innerHeight * (0.47 + Math.cos(event.note * 1.17) * 0.20),
             vx: Math.cos(event.note * 0.83) * 18,
-            vy: Math.sin(event.note * 0.61) * 18
+            vy: Math.sin(event.note * 0.61) * 18,
+            trail: []
         });
     }
 
@@ -552,10 +554,10 @@ export class VisualEngine {
 
         const elapsed = (now - this.lastInteraction) / 1000;
         const sleepElapsed = Math.max(0, elapsed - 30);
-        const cycle = Math.floor(sleepElapsed / 18);
 
-        if (cycle !== this.sleepCycle) {
-            this.sleepCycle = cycle;
+        // Choose one message when entering sleep and keep it until a new note.
+        if (this.sleepCycle === -1) {
+            this.sleepCycle = 0;
 
             const messages = [
                 "RÉVEILLEZ-MOI",
@@ -563,20 +565,21 @@ export class VisualEngine {
                 "HEY"
             ];
 
+            this.sleepMessageIndex =
+                (this.sleepMessageIndex + 1) % messages.length;
+
             if (idleMessage) {
                 idleMessage.textContent =
-                    messages[cycle % messages.length];
+                    messages[this.sleepMessageIndex];
                 idleMessage.classList.add("visible");
             }
         } else if (idleMessage) {
             idleMessage.classList.add("visible");
         }
 
-        const progress = sleepElapsed % 18;
-        const hold = Math.max(0, Math.min(1, (progress - 5) / 5));
-        const release = Math.max(0, Math.min(1, (progress - 10) / 7));
+        const progress = Math.min(1, sleepElapsed / 8);
         const messageStrength =
-            Math.min(1, (1 - release) * (0.72 + hold * 0.28));
+            0.72 + progress * 0.28;
 
         const elapsedAbsolute = now / 1000;
         const points = [];
@@ -670,6 +673,57 @@ export class VisualEngine {
                 (item.duration ? Math.min(item.duration, 3) * 1.8 : 0);
 
             const life = item.releaseLife;
+
+            // Forms remain the focus; the filament is only a subtle memory of movement.
+            if (!item.releasedAt && Number.isFinite(item.x) && Number.isFinite(item.y)) {
+                item.trail ??= [];
+
+                const lastTrail =
+                    item.trail[item.trail.length - 1];
+
+                if (
+                    !lastTrail ||
+                    Math.hypot(
+                        item.x - lastTrail.x,
+                        item.y - lastTrail.y
+                    ) > 5
+                ) {
+                    item.trail.push({
+                        x: item.x,
+                        y: item.y,
+                        born: now
+                    });
+                }
+
+                const maxTrailAge = 2.8;
+
+                item.trail = item.trail.filter(
+                    point => (now - point.born) / 1000 < maxTrailAge
+                );
+            }
+
+            if (item.trail?.length >= 2) {
+                ctx.save();
+                ctx.globalCompositeOperation = "lighter";
+                ctx.beginPath();
+
+                for (let i = 0; i < item.trail.length; i++) {
+                    const point = item.trail[i];
+
+                    if (i === 0) {
+                        ctx.moveTo(point.x, point.y);
+                    } else {
+                        ctx.lineTo(point.x, point.y);
+                    }
+                }
+
+                ctx.strokeStyle =
+                    `hsla(${item.hue}, 52%, 76%, ${0.10 * life})`;
+                ctx.lineWidth =
+                    0.65 + item.velocity * 0.45;
+                ctx.stroke();
+                ctx.restore();
+            }
 
             ctx.beginPath();
             ctx.arc(item.x, item.y, radius * 3.8, 0, Math.PI * 2);
