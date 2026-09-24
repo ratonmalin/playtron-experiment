@@ -43,6 +43,38 @@ const statusElement = document.querySelector("#status");
 const engineVersionElement = document.querySelector("#engine-version");
 
 
+const fullscreenButton = document.querySelector("#fullscreen-button");
+
+function updateFullscreenButton() {
+    if (!fullscreenButton) return;
+
+    fullscreenButton.textContent = document.fullscreenElement
+        ? "EXIT FULLSCREEN"
+        : "FULLSCREEN";
+}
+
+if (fullscreenButton) {
+    fullscreenButton.addEventListener("click", async () => {
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else {
+                await document.documentElement.requestFullscreen();
+            }
+        } catch (error) {
+            console.warn("[UI] Fullscreen unavailable:", error);
+        }
+
+        updateFullscreenButton();
+    });
+
+    document.addEventListener("fullscreenchange", updateFullscreenButton);
+    updateFullscreenButton();
+}
+
+
+
+
 console.log("[MAIN] Application initialisée.");
 console.log("[MAIN] Version:", VERSION);
 
