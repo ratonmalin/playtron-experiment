@@ -8,18 +8,10 @@ const voiceModule =
 
 const { Voice } = voiceModule;
 
-const HARMONIC_VOICING = [
-    48, 50, 52, 55, 57, 60, 62,
-    64, 67, 69, 72, 76, 79
-];
-
-function getHarmonicNote(midiNote) {
-    const index =
-        ((midiNote - 60) % HARMONIC_VOICING.length
-            + HARMONIC_VOICING.length)
-        % HARMONIC_VOICING.length;
-
-    return HARMONIC_VOICING[index];
+function getAudioNote(midiNote) {
+    // Keep the selected scale intact and place the audio one octave
+    // below the visual note range.
+    return midiNote - 12;
 }
 
 export class AudioEngine {
@@ -185,7 +177,7 @@ export class AudioEngine {
     noteOn(event) {
         if (!this.audioContext || !this.masterGain) return;
 
-        const audioNote = getHarmonicNote(event.note);
+        const audioNote = getAudioNote(event.note);
         const voiceId =
             `${event.source}-${event.channel}-${event.note}`;
 
