@@ -13,6 +13,9 @@ export class VisualEngine {
         this.chordStartedAt = 0;
         this.chordSize = 0;
         this.chordParticles = [];
+        this.maxActiveBodies = 32;
+        this.maxMemoryStars = 180;
+        this.lastFrameError = 0;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
@@ -51,12 +54,23 @@ export class VisualEngine {
     resize() {
         if (!this.canvas || !this.ctx) return;
 
-        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        const width = Math.max(
+            1,
+            Number.isFinite(window.innerWidth) ? window.innerWidth : 1
+        );
+        const height = Math.max(
+            1,
+            Number.isFinite(window.innerHeight) ? window.innerHeight : 1
+        );
+        const ratio = Math.min(
+            Math.max(window.devicePixelRatio || 1, 1),
+            2
+        );
 
-        this.canvas.width = Math.floor(innerWidth * ratio);
-        this.canvas.height = Math.floor(innerHeight * ratio);
-        this.canvas.style.width = innerWidth + "px";
-        this.canvas.style.height = innerHeight + "px";
+        this.canvas.width = Math.floor(width * ratio);
+        this.canvas.height = Math.floor(height * ratio);
+        this.canvas.style.width = width + "px";
+        this.canvas.style.height = height + "px";
 
         this.ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     }
@@ -76,14 +90,43 @@ export class VisualEngine {
     }
 
     getNoteHue(note) {
-        return ((note - 48) * 27.6923076923 + 195) % 360;
+        const safeNote = Number.isFinite(note) ? note : 48;
+        return ((safeNote - 48) * 27.6923076923 + 195) % 360;
     }
 
     onNoteOn(event) {
+        if (!event || !Number.isFinite(event.note)) return;
+
         const now = performance.now();
         const id = this.getBodyId(event);
 
         this.lastInteraction = now;
+
+        const existing = this.active.get(id);
+
+        if (existing && !existing.releasedAt) {
+            existing.velocity = Math.max(
+                0,
+                Math.min(
+                    1,
+                    Number.isFinite(event.velocity) ? event.velocity : 1
+                )
+            );
+            existing.born = now;
+            return;
+        }
+
+        if (this.active.size >= this.maxActiveBodies) {
+            const oldest = [...this.active.values()]
+                .filter(item => item.releasedAt)
+                .sort((a, b) => a.releasedAt - b.releasedAt)[0];
+
+            if (oldest) {
+                this.active.delete(oldest.id);
+            } else {
+                return;
+            }
+        }
 
         const heldItems = [...this.active.values()]
             .filter(item => !item.releasedAt);
@@ -134,7 +177,13 @@ export class VisualEngine {
             source: event.source,
             born: now,
             releasedAt: null,
-            velocity: event.velocity,
+            velocity: Math.max(
+                0,
+                Math.min(
+                    1,
+                    Number.isFinite(event.velocity) ? event.velocity : 1
+                )
+            ),
             angle: ((event.note * 47) % 360) * Math.PI / 180,
             phase: (event.note * 0.71) % (Math.PI * 2),
             hue: this.getNoteHue(event.note),
@@ -147,6 +196,8 @@ export class VisualEngine {
     }
 
     onNoteOff(event) {
+        if (!event || !Number.isFinite(event.note)) return;
+
         const id = this.getBodyId(event);
         const item = this.active.get(id);
 
@@ -171,8 +222,11 @@ export class VisualEngine {
             energy: item.velocity
         });
 
-        if (this.memory.length > 240) {
-            this.memory.shift();
+        if (this.memory.length > this.maxMemoryStars) {
+            this.memory.splice(
+                0,
+                this.memory.length - this.maxMemoryStars
+            );
         }
     }
 
@@ -388,10 +442,12 @@ export class VisualEngine {
     drawMemory(ctx, now) {
         const memoryLifetime = 120;
 
-        const visibleStars = this.memory.filter(star => {
-            const age = (now - star.born) / 1000;
-            return age < memoryLifetime;
-        });
+        const visibleStars = this.memory
+            .filter(star => {
+                const age = (now - star.born) / 1000;
+                return age < memoryLifetime;
+            })
+            .slice(-this.maxMemoryStars);
 
         const linked = new Set();
 
@@ -844,14 +900,39 @@ export class VisualEngine {
         if (!this.running) return;
 
         const ctx = this.ctx;
+        if (!ctx) return;
+
         const now = performance.now();
 
-        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        try {
+            ctx.clearRect(0, 0, innerWidth, innerHeight);
 
-        this.updateActiveBodies(now);
-        this.drawIdle(ctx, now);
-        this.drawMemory(ctx, now);
-        this.drawActiveBodies(ctx, now);
+            this.updateActiveBodies(now);
+            this.drawIdle(ctx, now);
+            this.drawMemory(ctx, now);
+            this.drawActiveBodies(ctx, now);
+
+            this.lastFrameError = 0;
+        } catch (error) {
+            if (now - this.lastFrameError > 2000) {
+                console.warn("[VISUALS] Frame recovered:", error);
+                this.lastFrameError = now;
+            }
+
+            try {
+                const ratio = Math.min(
+                    Math.max(window.devicePixelRatio || 1, 1),
+                    2
+                );
+
+                ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                ctx.globalAlpha = 1;
+                ctx.globalCompositeOperation = "source-over";
+                ctx.setLineDash([]);
+            } catch {
+                // Ignore canvas recovery errors and keep the loop alive.
+            }
+        }
 
         requestAnimationFrame(this.frame);
     }
