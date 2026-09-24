@@ -40,7 +40,6 @@ const keyboardElement = document.querySelector("#keyboard");
 const mappingElement = document.querySelector("#mapping-list");
 const lastEventElement = document.querySelector("#last-event");
 const statusElement = document.querySelector("#status");
-const startAudioButton = document.querySelector("#start-audio");
 const engineVersionElement = document.querySelector("#engine-version");
 
 
@@ -171,42 +170,6 @@ eventBus.on("noteoff", event => {
 });
 
 
-async function startAudio() {
-
-    console.log("[AUDIO] Initialisation...");
-
-    startAudioButton.disabled = true;
-    statusElement.textContent = "STARTING AUDIO...";
-
-    try {
-
-        await audioEngine.start();
-
-        console.log(
-            "[AUDIO] AudioContext:",
-            audioEngine.audioContext.state
-        );
-
-        statusElement.textContent = "AUDIO READY";
-        startAudioButton.textContent = "Son activé";
-
-    } catch (error) {
-
-        console.error("[AUDIO ERROR]", error);
-
-        statusElement.textContent = "AUDIO ERROR";
-        startAudioButton.textContent = "Erreur — réessayer";
-        startAudioButton.disabled = false;
-    }
-}
-
-
-startAudioButton.addEventListener(
-    "click",
-    startAudio
-);
-
-
 createKeyboardUI();
 createMappingUI();
 
@@ -214,6 +177,6 @@ keyboard.start();
 midiInput.start();
 visualEngine.start();
 
-statusElement.textContent = "AUDIO OFF";
+statusElement.textContent = "AUDIO READY";
 
 console.log("[MAIN] Prêt.");
