@@ -59,11 +59,11 @@ export class VisualEngine {
     drawOrbitalNote(ctx, item, now) {
         const age = (now - item.born) / 1000;
         const release = item.releasing
-            ? Math.min(1, (now - item.releasing) / 900)
+            ? Math.min(1, (now - item.releasing) / 420)
             : 0;
 
         const life = Math.max(0, 1 - release);
-        const progress = Math.min(1, age / 2.8);
+        const progress = Math.min(1, age / 2.4);
 
         const centerX =
             innerWidth * (0.5 + Math.sin(item.note * 1.73) * 0.28);
@@ -72,7 +72,7 @@ export class VisualEngine {
             innerHeight * (0.48 + Math.cos(item.note * 1.17) * 0.22);
 
         const orbit =
-            35 + (item.note % 7) * 13 + progress * 20;
+            55 + (item.note % 7) * 18 + progress * 28;
 
         const angle =
             item.angle + age * (0.18 + (item.note % 5) * 0.025);
@@ -84,44 +84,40 @@ export class VisualEngine {
             centerY + Math.sin(angle) * orbit * 0.62;
 
         const radius =
-            2.5 + item.velocity * 3.5;
+            3 + item.velocity * 5;
 
-        // Fine orbit line.
         ctx.beginPath();
         ctx.arc(centerX, centerY, orbit, 0, Math.PI * 2);
         ctx.strokeStyle =
-            "rgba(184, 151, 91, " + (0.18 * life) + ")";
+            "rgba(213, 165, 91, " + (0.13 * life) + ")";
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Small vintage "planet".
         ctx.beginPath();
         ctx.arc(x, y, radius, 0, Math.PI * 2);
         ctx.fillStyle =
-            "rgba(213, 165, 91, " + (0.78 * life) + ")";
+            "rgba(235, 190, 105, " + (0.9 * life) + ")";
         ctx.fill();
 
-        // Tiny halo.
         ctx.beginPath();
         ctx.arc(x, y, radius * 3.2, 0, Math.PI * 2);
         ctx.strokeStyle =
-            "rgba(213, 165, 91, " + (0.13 * life) + ")";
+            "rgba(213, 165, 91, " + (0.18 * life) + ")";
         ctx.stroke();
 
-        // Delayed little satellite dot.
         const satelliteAngle = -angle * 1.7;
-        const satelliteDistance = radius * 4.8;
+        const satelliteDistance = radius * 5;
 
         ctx.beginPath();
         ctx.arc(
             x + Math.cos(satelliteAngle) * satelliteDistance,
             y + Math.sin(satelliteAngle) * satelliteDistance,
-            1.2,
+            1.4,
             0,
             Math.PI * 2
         );
         ctx.fillStyle =
-            "rgba(191, 118, 91, " + (0.5 * life) + ")";
+            "rgba(191, 118, 91, " + (0.65 * life) + ")";
         ctx.fill();
 
         if (release >= 1) {
@@ -135,31 +131,8 @@ export class VisualEngine {
         const ctx = this.ctx;
         const now = performance.now();
 
-        // Almost-black canvas with a barely perceptible warm CRT-like haze.
-        ctx.fillStyle = "rgba(7, 8, 7, 0.18)";
-        ctx.fillRect(0, 0, innerWidth, innerHeight);
-
-        // A single slow-moving warm field keeps the screen alive without
-        // competing with the note events.
-        const drift = now * 0.000018;
-        const glowX = innerWidth * (0.5 + Math.sin(drift) * 0.18);
-        const glowY = innerHeight * (0.5 + Math.cos(drift * 0.7) * 0.14);
-        const glowRadius = Math.min(innerWidth, innerHeight) * 0.48;
-
-        const glow = ctx.createRadialGradient(
-            glowX,
-            glowY,
-            0,
-            glowX,
-            glowY,
-            glowRadius
-        );
-
-        glow.addColorStop(0, "rgba(126, 92, 54, 0.035)");
-        glow.addColorStop(0.65, "rgba(78, 62, 45, 0.018)");
-        glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-
-        ctx.fillStyle = glow;
+        // Full clear: released notes never leave trails behind.
+        ctx.fillStyle = "#050505";
         ctx.fillRect(0, 0, innerWidth, innerHeight);
 
         for (const item of this.active.values()) {
