@@ -222,7 +222,7 @@ export class AudioEngine {
                 this.masterGain,
                 this.reverbInput,
                 {
-                        note: audioNote,
+                    note: audioNote,
                     velocity
                 }
             );
