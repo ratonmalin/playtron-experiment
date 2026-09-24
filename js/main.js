@@ -1,46 +1,12 @@
-console.log("================================");
-console.log("MAIN.JS EST BIEN CHARGE");
-console.log("================================");
+console.log("MAIN.JS CHARGÉ");
 
+const button = document.querySelector("#test-button");
+const result = document.querySelector("#result");
 
-const button =
-    document.querySelector("#start-audio");
+button.addEventListener("click", () => {
 
-const status =
-    document.querySelector("#status");
+    console.log("BOUTON CLIQUÉ");
 
+    result.textContent = "MAIN.JS FONCTIONNE";
 
-console.log(
-    "Bouton trouvé :",
-    button
-);
-
-console.log(
-    "Status trouvé :",
-    status
-);
-
-
-if (!button) {
-
-    console.error(
-        "MAIN.JS : bouton #start-audio introuvable"
-    );
-
-} else {
-
-    button.addEventListener("click", () => {
-
-        console.log(
-            "MAIN.JS : bouton cliqué"
-        );
-
-        button.textContent =
-            "MAIN JS OK";
-
-        status.textContent =
-            "JAVASCRIPT OK";
-
-    });
-
-}
+});
