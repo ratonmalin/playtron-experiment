@@ -52,7 +52,8 @@ export class VisualEngine {
 
         const ctx = this.ctx;
         const now = performance.now();
-        ctx.clearRect(0, 0, innerWidth, innerHeight);
+        ctx.fillStyle = "rgba(243, 240, 233, 0.12)";
+        ctx.fillRect(0, 0, innerWidth, innerHeight);
 
         for (const [note, item] of this.active) {
             const age = (now - item.born) / 1000;
@@ -60,11 +61,11 @@ export class VisualEngine {
             const life = Math.max(0, 1 - release);
             const x = innerWidth * (0.18 + ((note * 37) % 64) / 100);
             const y = innerHeight * (0.2 + ((note * 17) % 60) / 100);
-            const radius = 30 + age * 12 + item.velocity * 45;
+            const radius = 42 + age * 18 + item.velocity * 70;
 
             const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-            gradient.addColorStop(0, "rgba(255,255,255," + (0.13 * life) + ")");
-            gradient.addColorStop(0.45, "rgba(210,220,235," + (0.055 * life) + ")");
+            gradient.addColorStop(0, "rgba(255,255,255," + (0.28 * life) + ")");
+            gradient.addColorStop(0.45, "rgba(210,220,235," + (0.12 * life) + ")");
             gradient.addColorStop(1, "rgba(210,220,235,0)");
 
             ctx.fillStyle = gradient;
