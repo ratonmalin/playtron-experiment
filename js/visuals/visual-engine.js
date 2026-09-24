@@ -59,11 +59,11 @@ export class VisualEngine {
     }
 
     createIdleBodies() {
-        this.idleBodies = Array.from({ length: 5 }, (_, index) => ({
+        this.idleBodies = Array.from({ length: 9 }, (_, index) => ({
             angle: index * 1.2566,
-            radius: 120 + index * 42,
-            speed: 0.025 + index * 0.004,
-            size: 1.5 + (index % 2),
+            radius: 90 + index * 58,
+            speed: 0.018 + index * 0.0035,
+            size: 2.5 + (index % 3) * 1.2,
             phase: index * 1.7
         }));
     }
@@ -116,7 +116,7 @@ export class VisualEngine {
             energy: item.velocity
         });
 
-        if (this.memory.length > 90) {
+        if (this.memory.length > 180) {
             this.memory.shift();
         }
     }
@@ -295,7 +295,7 @@ export class VisualEngine {
 
         for (const star of this.memory) {
             const age = (now - star.born) / 1000;
-            const life = Math.max(0, 1 - age / 28);
+            const life = Math.max(0, 1 - age / 75);
 
             if (life <= 0) continue;
 
@@ -323,7 +323,7 @@ export class VisualEngine {
 
     drawIdle(ctx, now) {
         const idle =
-            now - this.lastInteraction > 9000;
+            now - this.lastInteraction > 5000;
 
         if (!idle) return;
 
@@ -346,14 +346,19 @@ export class VisualEngine {
                 Math.sin(angle) * body.radius * 0.55;
 
             const alpha =
-                0.07 +
-                0.025 * Math.sin(elapsed * 0.6 + body.phase);
+                0.13 +
+                0.045 * Math.sin(elapsed * 0.6 + body.phase);
 
             ctx.beginPath();
             ctx.arc(x, y, body.size, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            const hue = 35 + indexHue(body.phase);
+            ctx.fillStyle = `hsla(${hue}, 58%, 66%, ${alpha})`;
             ctx.fill();
         }
+    }
+
+    indexHue(phase) {
+        return ((phase * 95) % 300 + 300) % 300;
     }
 
     drawActiveBodies(ctx, now) {
@@ -449,8 +454,8 @@ export class VisualEngine {
                 });
             }
 
-            if (this.memory.length > 90) {
-                this.memory.splice(0, this.memory.length - 90);
+            if (this.memory.length > 180) {
+                this.memory.splice(0, this.memory.length - 180);
             }
         }
     }
