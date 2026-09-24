@@ -20,7 +20,6 @@ export class VisualEngine {
         this.sleepParticles = [];
         this.sleepStartedAt = 0;
         this.interactionCount = 0;
-        this.idleFadeTimer = null;
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
