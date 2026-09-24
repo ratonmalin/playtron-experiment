@@ -102,24 +102,38 @@ h1 {
     left: 50%;
     top: 50%;
     z-index: 3;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -50%) scale(0.985);
     color: rgba(235, 242, 255, 0.72);
     font-size: clamp(38px, 7vw, 92px);
     font-weight: 300;
     letter-spacing: 0.16em;
     text-transform: lowercase;
     opacity: 0;
-    filter: blur(0.2px);
+    filter: blur(0.35px);
     transition:
-        opacity 5200ms ease,
-        transform 7000ms cubic-bezier(0.22, 1, 0.36, 1);
+        opacity 9000ms cubic-bezier(0.22, 1, 0.36, 1),
+        transform 11000ms cubic-bezier(0.22, 1, 0.36, 1);
     pointer-events: none;
     white-space: nowrap;
 }
 
 .idle-message.visible {
     opacity: 0.68;
-    transform: translate(-50%, -54%);
+    transform: translate(-50%, -54%) scale(1);
+    animation: idle-breathe 8.5s ease-in-out 7s infinite;
+}
+
+@keyframes idle-breathe {
+    0%,
+    100% {
+        transform: translate(-50%, -54%) scale(1);
+        letter-spacing: 0.16em;
+    }
+
+    50% {
+        transform: translate(-50%, -54.8%) scale(1.018);
+        letter-spacing: 0.165em;
+    }
 }
 
 .instrument {
