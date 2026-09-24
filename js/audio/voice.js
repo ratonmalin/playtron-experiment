@@ -6,31 +6,20 @@ export class Voice {
         reverbInput,
         { note, velocity }
     ) {
+        this.audioContext = audioContext;
+        this.destination = destination;
+        this.reverbInput = reverbInput;
 
-        this.audioContext =
-            audioContext;
-
-        this.destination =
-            destination;
-
-        this.reverbInput =
-            reverbInput;
-
-        this.note =
-            note;
-
-        this.velocity =
-            velocity;
+        this.note = note;
+        this.velocity = velocity;
 
         this.oscillatorA = null;
         this.oscillatorB = null;
         this.oscillatorC = null;
 
         this.filter = null;
-
         this.gain = null;
         this.reverbSend = null;
-
         this.panner = null;
 
         this.lfo = null;
@@ -46,30 +35,24 @@ export class Voice {
 
     start() {
 
-        const context =
-            this.audioContext;
-
-        const now =
-            context.currentTime;
-
+        const context = this.audioContext;
+        const now = context.currentTime;
 
         const frequency =
-            440 *
-            Math.pow(
+            440 * Math.pow(
                 2,
                 (this.note - 69) / 12
             );
 
 
         /*
-         * OSCILLATEUR PRINCIPAL
+         * NOTE PRINCIPALE
          */
 
         this.oscillatorA =
             context.createOscillator();
 
-        this.oscillatorA.type =
-            "sine";
+        this.oscillatorA.type = "sine";
 
         this.oscillatorA.frequency
             .setValueAtTime(
@@ -80,15 +63,12 @@ export class Voice {
 
         /*
          * SECONDE COUCHE
-         *
-         * Très légèrement désaccordée.
          */
 
         this.oscillatorB =
             context.createOscillator();
 
-        this.oscillatorB.type =
-            "triangle";
+        this.oscillatorB.type = "sine";
 
         this.oscillatorB.frequency
             .setValueAtTime(
@@ -98,20 +78,19 @@ export class Voice {
 
         this.oscillatorB.detune
             .setValueAtTime(
-                7,
+                5,
                 now
             );
 
 
         /*
-         * HARMONIQUE SUPÉRIEURE
+         * OCTAVE SUPÉRIEURE
          */
 
         this.oscillatorC =
             context.createOscillator();
 
-        this.oscillatorC.type =
-            "sine";
+        this.oscillatorC.type = "sine";
 
         this.oscillatorC.frequency
             .setValueAtTime(
@@ -121,7 +100,7 @@ export class Voice {
 
         this.oscillatorC.detune
             .setValueAtTime(
-                -5,
+                -4,
                 now
             );
 
@@ -133,24 +112,23 @@ export class Voice {
         this.filter =
             context.createBiquadFilter();
 
-        this.filter.type =
-            "lowpass";
+        this.filter.type = "lowpass";
 
         this.filter.frequency
             .setValueAtTime(
-                1100,
+                1600,
                 now
             );
 
         this.filter.Q
             .setValueAtTime(
-                0.3,
+                0.25,
                 now
             );
 
 
         /*
-         * MODULATION LENTE DU FILTRE
+         * MODULATION TRÈS LENTE DU FILTRE
          */
 
         this.filterLfo =
@@ -159,18 +137,17 @@ export class Voice {
         this.filterLfoGain =
             context.createGain();
 
-        this.filterLfo.type =
-            "sine";
+        this.filterLfo.type = "sine";
 
         this.filterLfo.frequency
             .setValueAtTime(
-                0.055,
+                0.05,
                 now
             );
 
         this.filterLfoGain.gain
             .setValueAtTime(
-                380,
+                500,
                 now
             );
 
@@ -184,7 +161,7 @@ export class Voice {
 
 
         /*
-         * VIBRATION TRÈS LENTE
+         * PETIT MOUVEMENT DE HAUTEUR
          */
 
         this.lfo =
@@ -193,18 +170,17 @@ export class Voice {
         this.lfoGain =
             context.createGain();
 
-        this.lfo.type =
-            "sine";
+        this.lfo.type = "sine";
 
         this.lfo.frequency
             .setValueAtTime(
-                0.09,
+                0.08,
                 now
             );
 
         this.lfoGain.gain
             .setValueAtTime(
-                1.8,
+                1.5,
                 now
             );
 
@@ -232,15 +208,8 @@ export class Voice {
         this.gain =
             context.createGain();
 
-
         const peakGain =
-            0.075 *
-            this.velocity;
-
-
-        /*
-         * DÉPART QUASI SILENCIEUX
-         */
+            0.07 * this.velocity;
 
         this.gain.gain
             .setValueAtTime(
@@ -250,9 +219,9 @@ export class Voice {
 
 
         /*
-         * FADE IN TRÈS LONG
+         * ATTAQUE PLUS RAPIDE
          *
-         * 2.5 secondes.
+         * 0.55 seconde au lieu de 2.5.
          */
 
         this.gain.gain
@@ -261,27 +230,19 @@ export class Voice {
                     peakGain,
                     0.0002
                 ),
-                now + 2.5
+                now + 0.55
             );
 
 
         /*
-         * PANORAMIQUE
+         * POSITION STÉRÉO
          */
 
         this.panner =
             context.createStereoPanner();
 
-
-        /*
-         * Placement doux dans le champ stéréo.
-         */
-
         const pan =
-            ((this.note % 12) / 11) *
-            0.5 -
-            0.25;
-
+            ((this.note % 12) / 11) * 0.5 - 0.25;
 
         this.panner.pan
             .setValueAtTime(
@@ -297,15 +258,9 @@ export class Voice {
         this.reverbSend =
             context.createGain();
 
-
-        /*
-         * Signal fortement envoyé
-         * dans la reverb.
-         */
-
         this.reverbSend.gain
             .setValueAtTime(
-                0.82,
+                0.9,
                 now
             );
 
@@ -325,7 +280,6 @@ export class Voice {
         this.oscillatorC.connect(
             this.filter
         );
-
 
         this.filter.connect(
             this.gain
@@ -363,7 +317,6 @@ export class Voice {
          */
 
         this.lfo.start(now);
-
         this.filterLfo.start(now);
 
         this.oscillatorA.start(now);
@@ -380,19 +333,8 @@ export class Voice {
 
         this.isReleased = true;
 
-
-        const context =
-            this.audioContext;
-
-        const now =
-            context.currentTime;
-
-
-        /*
-         * FADE OUT TRÈS LONG
-         *
-         * 12 secondes.
-         */
+        const context = this.audioContext;
+        const now = context.currentTime;
 
         const currentGain =
             Math.max(
@@ -402,9 +344,7 @@ export class Voice {
 
 
         this.gain.gain
-            .cancelScheduledValues(
-                now
-            );
+            .cancelScheduledValues(now);
 
         this.gain.gain
             .setValueAtTime(
@@ -412,36 +352,36 @@ export class Voice {
                 now
             );
 
+
+        /*
+         * FADE DE 10 SECONDES
+         */
+
         this.gain.gain
             .exponentialRampToValueAtTime(
                 0.0001,
-                now + 12
+                now + 10
             );
 
 
-        /*
-         * Les oscillateurs restent actifs
-         * pendant tout le fade.
-         */
-
         this.oscillatorA.stop(
-            now + 12.1
+            now + 10.1
         );
 
         this.oscillatorB.stop(
-            now + 12.1
+            now + 10.1
         );
 
         this.oscillatorC.stop(
-            now + 12.1
+            now + 10.1
         );
 
         this.lfo.stop(
-            now + 12.1
+            now + 10.1
         );
 
         this.filterLfo.stop(
-            now + 12.1
+            now + 10.1
         );
 
 
@@ -450,16 +390,14 @@ export class Voice {
                 () => {
                     this.disconnect();
                 },
-                12500
+                10500
             );
     }
 
 
     disconnect() {
 
-        if (
-            this.releaseTimer !== null
-        ) {
+        if (this.releaseTimer !== null) {
 
             clearTimeout(
                 this.releaseTimer
@@ -467,7 +405,6 @@ export class Voice {
 
             this.releaseTimer = null;
         }
-
 
         try {
             this.oscillatorA?.disconnect();
@@ -519,10 +456,8 @@ export class Voice {
         this.oscillatorC = null;
 
         this.filter = null;
-
         this.gain = null;
         this.reverbSend = null;
-
         this.panner = null;
 
         this.lfo = null;
