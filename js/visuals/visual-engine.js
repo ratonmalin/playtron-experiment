@@ -425,22 +425,6 @@ export class VisualEngine {
     drawActiveBodies(ctx, now) {
         const items = [...this.active.values()];
 
-        if (items.length >= 2) {
-            const center = this.getSystemCenter();
-            const alpha = items.length >= 3 ? 0.16 : 0.08;
-
-            ctx.beginPath();
-
-            for (const item of items) {
-                ctx.moveTo(center.x, center.y);
-                ctx.lineTo(item.x, item.y);
-            }
-
-            ctx.strokeStyle = `rgba(213, 165, 91, ${alpha})`;
-            ctx.lineWidth = items.length >= 3 ? 1.2 : 0.8;
-            ctx.stroke();
-        }
-
         for (const item of items) {
             const radius =
                 11 +
@@ -496,28 +480,10 @@ export class VisualEngine {
             }
         }
 
-        if (
-            items.length >= 3 &&
-            now - this.lastBloom > 2600
-        ) {
-            this.lastBloom = now;
+        // Three-note motion stays purely in the active bodies.
+        // Do not inject memory particles at the center: that creates an
+        // artificial visual mass and breaks the constellation aesthetic.
 
-            const center = this.getSystemCenter();
-
-            for (let i = 0; i < 10; i++) {
-                this.memory.push({
-                    x: center.x + (Math.random() - 0.5) * 150,
-                    y: center.y + (Math.random() - 0.5) * 110,
-                    born: now,
-                    note: 0,
-                    duration: 2,
-                    energy: 0.6
-                });
-            }
-
-            if (this.memory.length > 180) {
-                this.memory.splice(0, this.memory.length - 240);
-            }
         }
     }
 
