@@ -103,10 +103,16 @@ h1 {
     top: 50%;
     z-index: 3;
     transform: translate(-50%, -50%) scale(0.985);
-    color: rgba(235, 242, 255, 0.78);
-    font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+    color: #ffffff;
+    font-family:
+        Inter,
+        system-ui,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
     font-size: clamp(46px, 8vw, 108px);
-    font-weight: 400;
+    font-weight: 500;
     font-style: normal;
     letter-spacing: 0.045em;
     text-transform: lowercase;
@@ -125,6 +131,10 @@ h1 {
     opacity: 0.82;
     transform: translate(-50%, -54%) scale(1);
     animation: idle-breathe 8.5s ease-in-out 7s infinite;
+}
+
+.idle-message.forming {
+    opacity: 0;
 }
 
 @keyframes idle-breathe {
