@@ -82,6 +82,13 @@ export class VisualEngine {
 
         this.lastInteraction = now;
 
+        const idleMessage =
+            document.getElementById("idle-message");
+
+        if (idleMessage) {
+            idleMessage.classList.remove("visible");
+        }
+
         this.active.set(id, {
             id,
             note: event.note,
@@ -351,6 +358,13 @@ export class VisualEngine {
         const idle =
             now - this.lastInteraction > 5000;
 
+        const idleMessage =
+            document.getElementById("idle-message");
+
+        if (idleMessage) {
+            idleMessage.classList.toggle("visible", idle);
+        }
+
         if (!idle) return;
 
         const elapsed = now / 1000;
@@ -480,44 +494,80 @@ export class VisualEngine {
             }
         }
 
-        // Three-note systems use only the active stars.
-        // No central bloom or particle mass is created.
+        // A chord becomes a temporary celestial event.
+        // The geometry remains sparse: the light is concentrated at the
+        // constellation's center instead of creating extra particles.
 
-        if (items.length >= 3) {
-            const linked = new Set();
+        if (items.length >= 2) {
+            const center = this.getSystemCenter();
+            const pulse = 0.5 + 0.5 * Math.sin(now / 420);
+            const strength = Math.min(1, (items.length - 1) / 3);
 
-            for (const item of items) {
-                let nearest = null;
-                let nearestDistance = Infinity;
-
-                for (const other of items) {
-                    if (other === item) continue;
-
+            for (let i = 0; i < items.length; i++) {
+                for (let j = i + 1; j < items.length; j++) {
+                    const a = items[i];
+                    const b = items[j];
                     const distance = Math.hypot(
-                        other.x - item.x,
-                        other.y - item.y
+                        b.x - a.x,
+                        b.y - a.y
                     );
 
-                    if (distance < nearestDistance) {
-                        nearestDistance = distance;
-                        nearest = other;
-                    }
+                    if (distance > 360) continue;
+
+                    const alpha =
+                        (0.10 + strength * 0.07 + pulse * 0.04) *
+                        (1 - distance / 360);
+
+                    ctx.beginPath();
+                    ctx.moveTo(a.x, a.y);
+                    ctx.lineTo(b.x, b.y);
+                    ctx.strokeStyle =
+                        `rgba(205, 220, 245, ${alpha})`;
+                    ctx.lineWidth = items.length >= 3 ? 1.1 : 0.8;
+                    ctx.stroke();
                 }
+            }
 
-                if (!nearest || nearestDistance > 300) continue;
+            const coreRadius =
+                12 +
+                items.length * 4 +
+                pulse * (8 + strength * 10);
 
-                const pairKey = [item.id, nearest.id].sort().join(":");
-                if (linked.has(pairKey)) continue;
-                linked.add(pairKey);
+            const gradient = ctx.createRadialGradient(
+                center.x,
+                center.y,
+                0,
+                center.x,
+                center.y,
+                coreRadius * 3.5
+            );
 
-                const alpha =
-                    0.16 * (1 - nearestDistance / 300);
+            gradient.addColorStop(
+                0,
+                `rgba(240, 246, 255, ${0.10 + strength * 0.08 + pulse * 0.05})`
+            );
+            gradient.addColorStop(
+                0.24,
+                `rgba(205, 225, 255, ${0.035 + strength * 0.025})`
+            );
+            gradient.addColorStop(
+                1,
+                "rgba(205, 225, 255, 0)"
+            );
+
+            ctx.beginPath();
+            ctx.arc(center.x, center.y, coreRadius * 3.5, 0, Math.PI * 2);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            if (items.length >= 3) {
+                const ringRadius =
+                    coreRadius * (1.5 + pulse * 0.7);
 
                 ctx.beginPath();
-                ctx.moveTo(item.x, item.y);
-                ctx.lineTo(nearest.x, nearest.y);
+                ctx.arc(center.x, center.y, ringRadius, 0, Math.PI * 2);
                 ctx.strokeStyle =
-                    `rgba(190, 210, 235, ${alpha})`;
+                    `rgba(220, 232, 250, ${0.08 + pulse * 0.06})`;
                 ctx.lineWidth = 0.8;
                 ctx.stroke();
             }
