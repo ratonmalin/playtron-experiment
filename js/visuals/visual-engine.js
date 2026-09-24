@@ -87,6 +87,7 @@ export class VisualEngine {
             velocity: event.velocity,
             angle: ((event.note * 47) % 360) * Math.PI / 180,
             phase: (event.note * 0.71) % (Math.PI * 2),
+            hue: ((event.note - 48) / 31) * 300 + 20,
             duration: null,
             x: innerWidth * (0.5 + Math.sin(event.note * 1.73) * 0.25),
             y: innerHeight * (0.47 + Math.cos(event.note * 1.17) * 0.20),
@@ -242,7 +243,7 @@ export class VisualEngine {
 
             if (item.releasedAt) {
                 const release =
-                    Math.min(1, (now - item.releasedAt) / 900);
+                    Math.min(1, (now - item.releasedAt) / 2400);
 
                 item.releaseLife = 1 - release;
 
@@ -306,14 +307,14 @@ export class VisualEngine {
             ctx.beginPath();
             ctx.arc(star.x, star.y, radius, 0, Math.PI * 2);
             ctx.fillStyle =
-                `rgba(235, 190, 105, ${0.34 * life})`;
+                `hsla(${star.note ? ((star.note - 48) / 31) * 300 + 20 : 42}, 68%, 68%, ${0.34 * life})`;
             ctx.fill();
 
             if (star.duration > 1.4) {
                 ctx.beginPath();
                 ctx.arc(star.x, star.y, radius * 4, 0, Math.PI * 2);
                 ctx.strokeStyle =
-                    `rgba(213, 165, 91, ${0.08 * life})`;
+                    `hsla(${star.note ? ((star.note - 48) / 31) * 300 + 20 : 42}, 58%, 62%, ${0.08 * life})`;
                 ctx.lineWidth = 1;
                 ctx.stroke();
             }
@@ -376,23 +377,23 @@ export class VisualEngine {
 
         for (const item of items) {
             const radius =
-                4 +
-                item.velocity * 8 +
-                (item.duration ? Math.min(item.duration, 3) : 0);
+                11 +
+                item.velocity * 13 +
+                (item.duration ? Math.min(item.duration, 3) * 1.8 : 0);
 
             const life = item.releaseLife;
 
             ctx.beginPath();
             ctx.arc(item.x, item.y, radius * 3.8, 0, Math.PI * 2);
             ctx.strokeStyle =
-                `rgba(213, 165, 91, ${0.10 * life})`;
+                `hsla(${item.hue}, 58%, 62%, ${0.16 * life})`;
             ctx.lineWidth = 1;
             ctx.stroke();
 
             ctx.beginPath();
             ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
             ctx.fillStyle =
-                `rgba(235, 190, 105, ${0.88 * life})`;
+                `hsla(${item.hue}, 68%, 68%, ${0.92 * life})`;
             ctx.fill();
 
             if (item.chaotic) {
@@ -410,7 +411,7 @@ export class VisualEngine {
                     Math.PI * 2
                 );
                 ctx.fillStyle =
-                    `rgba(191, 118, 91, ${0.65 * life})`;
+                    `hsla(${(item.hue + 35) % 360}, 62%, 64%, ${0.72 * life})`;
                 ctx.fill();
             }
 
@@ -424,7 +425,7 @@ export class VisualEngine {
                     Math.PI * 2
                 );
                 ctx.strokeStyle =
-                    `rgba(235, 190, 105, ${0.16 * life})`;
+                    `hsla(${item.hue}, 68%, 72%, ${0.22 * life})`;
                 ctx.stroke();
             }
         }
