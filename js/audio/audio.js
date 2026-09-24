@@ -1,4 +1,3 @@
-```js
 const VERSION =
     new URL(import.meta.url).searchParams.get("v") || "unknown";
 
@@ -14,10 +13,13 @@ const { Voice } = voiceModule;
 /*
  * VOICING HARMONIQUE
  *
- * Registre volontairement plus resserré
- * que la première version.
+ * Registre resserré autour du médium.
  *
  * C3 → A5
+ *
+ * L'idée est d'éviter les extrêmes C2/A7
+ * qui donnaient une sensation de registre
+ * beaucoup trop étendu.
  */
 
 const HARMONIC_VOICING = [
@@ -25,10 +27,12 @@ const HARMONIC_VOICING = [
     52, // E3
     55, // G3
     57, // A3
+
     60, // C4
     64, // E4
     67, // G4
     69, // A4
+
     72, // C5
     76, // E5
     79, // G5
@@ -104,12 +108,20 @@ export class AudioEngine {
                 new AudioContext();
 
 
+            /*
+             * MASTER
+             */
+
             this.masterGain =
                 this.audioContext.createGain();
 
             this.masterGain.gain.value =
                 0.42;
 
+
+            /*
+             * COMPRESSEUR LÉGER
+             */
 
             this.compressor =
                 this.audioContext
@@ -131,8 +143,16 @@ export class AudioEngine {
                 1.2;
 
 
+            /*
+             * REVERB
+             */
+
             this.createReverb();
 
+
+            /*
+             * SORTIE
+             */
 
             this.masterGain.connect(
                 this.compressor
@@ -148,7 +168,6 @@ export class AudioEngine {
             this.audioContext.state ===
             "suspended"
         ) {
-
             await this.audioContext.resume();
         }
 
@@ -157,7 +176,6 @@ export class AudioEngine {
             this.audioContext.state !==
             "running"
         ) {
-
             throw new Error(
                 `AudioContext state: ${this.audioContext.state}`
             );
@@ -181,6 +199,10 @@ export class AudioEngine {
         this.reverbInput =
             context.createGain();
 
+
+        /*
+         * REVERB 14 SECONDES
+         */
 
         const duration = 14.0;
         const decay = 4.5;
@@ -223,19 +245,23 @@ export class AudioEngine {
                 const time =
                     i / sampleRate;
 
+
                 const envelope =
                     Math.pow(
                         1 - time / duration,
                         decay
                     );
 
+
                 const noise =
                     Math.random() * 2 - 1;
+
 
                 const stereo =
                     channel === 0
                         ? 1
                         : 0.92;
+
 
                 data[i] =
                     noise *
@@ -258,6 +284,10 @@ export class AudioEngine {
         this.reverbGain.gain.value =
             0.92;
 
+
+        /*
+         * FILTRE DE REVERB
+         */
 
         const reverbFilter =
             context.createBiquadFilter();
@@ -296,9 +326,11 @@ export class AudioEngine {
             return;
         }
 
+
         if (event.type === "noteon") {
             this.noteOn(event);
         }
+
 
         if (event.type === "noteoff") {
             this.noteOff(event);
@@ -311,14 +343,17 @@ export class AudioEngine {
         const audioNote =
             getHarmonicNote(event.note);
 
+
         const voiceId =
             `${event.source}-${event.note}`;
+
 
         if (
             this.activeVoices.has(voiceId)
         ) {
             return;
         }
+
 
         const voice =
             new Voice(
@@ -331,10 +366,12 @@ export class AudioEngine {
                 }
             );
 
+
         this.activeVoices.set(
             voiceId,
             voice
         );
+
 
         voice.start();
     }
@@ -345,12 +382,15 @@ export class AudioEngine {
         const voiceId =
             `${event.source}-${event.note}`;
 
+
         const voice =
             this.activeVoices.get(voiceId);
+
 
         if (!voice) {
             return;
         }
+
 
         voice.release();
 
@@ -366,7 +406,6 @@ export class AudioEngine {
             const voice
             of this.activeVoices.values()
         ) {
-
             voice.release();
         }
 
@@ -380,13 +419,12 @@ export class AudioEngine {
             return;
         }
 
+
         if (
             this.audioContext.state ===
             "suspended"
         ) {
-
             await this.audioContext.resume();
         }
     }
 }
-```
