@@ -17,6 +17,10 @@ export class Voice {
         this.oscillatorB = null;
         this.oscillatorC = null;
 
+        this.oscillatorAGain = null;
+        this.oscillatorBGain = null;
+        this.oscillatorCGain = null;
+
         this.filter = null;
         this.gain = null;
         this.reverbSend = null;
@@ -109,6 +113,27 @@ export class Voice {
 
 
         /*
+         * MIXAGE DES OSCILLATEURS
+         *
+         * La fondamentale reste dominante.
+         * Les couches aiguës sont volontairement
+         * discrètes pour éviter le côté perçant.
+         */
+
+        this.oscillatorAGain = context.createGain();
+        this.oscillatorBGain = context.createGain();
+        this.oscillatorCGain = context.createGain();
+
+        this.oscillatorAGain.gain.setValueAtTime(0.72, now);
+        this.oscillatorBGain.gain.setValueAtTime(0.24, now);
+        this.oscillatorCGain.gain.setValueAtTime(0.08, now);
+
+        this.oscillatorA.connect(this.oscillatorAGain);
+        this.oscillatorB.connect(this.oscillatorBGain);
+        this.oscillatorC.connect(this.oscillatorCGain);
+
+
+        /*
          * FILTRE
          */
 
@@ -119,7 +144,7 @@ export class Voice {
 
         this.filter.frequency
             .setValueAtTime(
-                1600,
+                1250,
                 now
             );
 
@@ -150,7 +175,7 @@ export class Voice {
 
         this.filterLfoGain.gain
             .setValueAtTime(
-                500,
+                280,
                 now
             );
 
@@ -212,7 +237,7 @@ export class Voice {
             context.createGain();
 
         const peakGain =
-            0.07 * this.velocity;
+            0.095 * this.velocity;
 
         this.gain.gain
             .setValueAtTime(
@@ -231,7 +256,7 @@ export class Voice {
                     peakGain,
                     0.0002
                 ),
-                now + 0.55
+                now + 0.38
             );
 
 
@@ -261,7 +286,7 @@ export class Voice {
 
         this.reverbSend.gain
             .setValueAtTime(
-                0.9,
+                1.15,
                 now
             );
 
@@ -270,17 +295,9 @@ export class Voice {
          * ROUTING
          */
 
-        this.oscillatorA.connect(
-            this.filter
-        );
-
-        this.oscillatorB.connect(
-            this.filter
-        );
-
-        this.oscillatorC.connect(
-            this.filter
-        );
+        this.oscillatorAGain.connect(this.filter);
+        this.oscillatorBGain.connect(this.filter);
+        this.oscillatorCGain.connect(this.filter);
 
         this.filter.connect(
             this.gain
@@ -412,11 +429,23 @@ export class Voice {
         } catch {}
 
         try {
+            this.oscillatorAGain?.disconnect();
+        } catch {}
+
+        try {
             this.oscillatorB?.disconnect();
         } catch {}
 
         try {
+            this.oscillatorBGain?.disconnect();
+        } catch {}
+
+        try {
             this.oscillatorC?.disconnect();
+        } catch {}
+
+        try {
+            this.oscillatorCGain?.disconnect();
         } catch {}
 
         try {
@@ -455,6 +484,10 @@ export class Voice {
         this.oscillatorA = null;
         this.oscillatorB = null;
         this.oscillatorC = null;
+
+        this.oscillatorAGain = null;
+        this.oscillatorBGain = null;
+        this.oscillatorCGain = null;
 
         this.filter = null;
         this.gain = null;
