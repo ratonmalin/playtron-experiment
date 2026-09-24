@@ -219,7 +219,12 @@ export class VisualEngine {
             born: performance.now(),
             note: item.note,
             duration: item.duration,
-            energy: item.velocity
+            energy: item.velocity,
+            path: (item.trail ?? []).map(point => ({
+                x: point.x,
+                y: point.y,
+                born: point.born
+            }))
         });
 
         if (this.memory.length > this.maxMemoryStars) {
@@ -469,6 +474,36 @@ export class VisualEngine {
 
     drawMemory(ctx, now) {
         const memoryLifetime = 120;
+        const pathLifetime = 18;
+
+        for (const star of this.memory) {
+            if (!star.path || star.path.length < 2) continue;
+
+            const age = (now - star.born) / 1000;
+            const life = Math.max(0, 1 - age / pathLifetime);
+
+            if (life <= 0) continue;
+
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            ctx.beginPath();
+
+            for (let i = 0; i < star.path.length; i++) {
+                const point = star.path[i];
+
+                if (i === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
+                }
+            }
+
+            ctx.strokeStyle =
+                `hsla(${this.getNoteHue(star.note || 48)}, 42%, 76%, ${0.045 * life})`;
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+            ctx.restore();
+        }
 
         const visibleStars = this.memory
             .filter(star => {
@@ -686,8 +721,10 @@ export class VisualEngine {
 
             const life = item.releaseLife;
 
-            // Forms remain the focus; the filament is only a subtle memory of movement.
-            if (!item.releasedAt && Number.isFinite(item.x) && Number.isFinite(item.y)) {
+            // The trajectory is now part of the instrument's memory.
+            // Released bodies keep their inertia briefly, so their path can
+            // continue after the note is released.
+            if (Number.isFinite(item.x) && Number.isFinite(item.y)) {
                 item.trail ??= [];
 
                 const lastTrail =
@@ -707,7 +744,9 @@ export class VisualEngine {
                     });
                 }
 
-                const maxTrailAge = 2.8;
+                const maxTrailAge = item.releasedAt
+                    ? 5.2
+                    : 8;
 
                 item.trail = item.trail.filter(
                     point => (now - point.born) / 1000 < maxTrailAge
@@ -729,8 +768,12 @@ export class VisualEngine {
                     }
                 }
 
+                const trailAlpha = item.releasedAt
+                    ? 0.06 * life
+                    : 0.10 * life;
+
                 ctx.strokeStyle =
-                    `hsla(${item.hue}, 52%, 76%, ${0.10 * life})`;
+                    `hsla(${item.hue}, 52%, 76%, ${trailAlpha})`;
                 ctx.lineWidth =
                     0.65 + item.velocity * 0.45;
                 ctx.stroke();
