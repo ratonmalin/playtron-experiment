@@ -9,8 +9,9 @@ const voiceModule =
 const { Voice } = voiceModule;
 
 function getAudioNote(midiNote) {
-    // Play the exact MIDI pitch received by the engine.
-    return midiNote;
+    // Play Playtron one octave above its default C3-and-up range.
+    // The incoming MIDI value itself remains unchanged for visuals and mapping.
+    return midiNote + 12;
 }
 
 export class AudioEngine {
