@@ -18,7 +18,11 @@ export class MidiInput {
             this.access.onstatechange = () => this.refreshInputs();
             console.log("[MIDI] Ready.");
         } catch (error) {
-            console.warn("[MIDI] Access unavailable:", error);
+            console.warn(
+                "[MIDI] Access unavailable:",
+                error?.name || "UnknownError",
+                error?.message || error
+            );
         }
     }
 
