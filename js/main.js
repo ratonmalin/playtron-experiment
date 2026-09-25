@@ -105,7 +105,6 @@ if (scaleButton) {
         });
     });
 
-    createKeyboardUI();
     updateScaleButton();
 }
 
@@ -231,8 +230,6 @@ eventBus.on("noteon", event => {
 eventBus.on("noteoff", event => {
     updateKeyboardKey(event);
 });
-
-createKeyboardUI();
 
 keyboard.start();
 touch.start();
