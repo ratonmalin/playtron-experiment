@@ -118,7 +118,7 @@ export class AudioEngine {
 
         this.reverbInput = context.createGain();
 
-        const duration = 4.2;
+        const duration = 2.8;
         const decay = 5.5;
         const sampleRate = context.sampleRate;
         const length = Math.floor(sampleRate * duration);
