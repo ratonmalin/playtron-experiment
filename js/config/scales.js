@@ -18,11 +18,18 @@ export const SCALES = [
 
 const ROOT_NOTE = 60;
 
-// Playtron normally starts around C3. Keep the physical input mapping
-// musically comfortable for the installation: one octave higher, then
-// quantize into the currently selected scale.
-const PLAYTRON_BASE_NOTE = 48;
-const PLAYTRON_INPUT_COUNT = 16;
+// Playtron's factory mapping is 16 consecutive MIDI notes starting at C3.
+ // We deliberately map those 16 physical inputs by index rather than
+ // quantizing each raw MIDI note independently: a pentatonic scale cannot
+ // represent 16 distinct inputs inside a single octave without collisions.
+const PLAYTRON_RAW_NOTES = Array.from(
+    { length: 16 },
+    (_, index) => 48 + index
+);
+
+const PLAYTRON_NOTE_TO_INDEX = new Map(
+    PLAYTRON_RAW_NOTES.map((note, index) => [note, index])
+);
 
 export class ScaleManager {
     constructor() {
@@ -124,15 +131,16 @@ export class ScaleManager {
     }
 
     mapPlaytronNote(note) {
-        // Playtron has 16 physical inputs. Do not quantize the raw MIDI
-        // note by proximity: several different inputs would collapse onto
-        // the same pentatonic note. Instead, use the raw input as an index
-        // in the current scale so every physical input stays distinct.
-        const index = Math.max(
+        const rawIndex = PLAYTRON_NOTE_TO_INDEX.get(note);
+
+        // Never let an unknown MIDI note silently collapse onto the last
+        // Playtron input. Keep it musically valid, but preserve a predictable
+        // fallback for custom device mappings.
+        const index = rawIndex ?? Math.max(
             0,
             Math.min(
-                PLAYTRON_INPUT_COUNT - 1,
-                Math.round(note - PLAYTRON_BASE_NOTE)
+                PLAYTRON_RAW_NOTES.length - 1,
+                Math.round(note - PLAYTRON_RAW_NOTES[0])
             )
         );
 
