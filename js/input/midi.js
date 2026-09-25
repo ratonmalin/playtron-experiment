@@ -37,6 +37,15 @@ export class MidiInput {
         const channel = status & 0x0f;
 
         if (type === 0x90 && velocity > 0) {
+            console.log(
+                "[MIDI] Note On:",
+                note,
+                "velocity:",
+                velocity,
+                "channel:",
+                channel + 1
+            );
+
             this.eventBus.emit({
                 type: "noteon",
                 note,
@@ -48,6 +57,13 @@ export class MidiInput {
         }
 
         if (type === 0x80 || (type === 0x90 && velocity === 0)) {
+            console.log(
+                "[MIDI] Note Off:",
+                note,
+                "channel:",
+                channel + 1
+            );
+
             this.eventBus.emit({
                 type: "noteoff",
                 note,
