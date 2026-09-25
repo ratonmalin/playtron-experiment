@@ -80,14 +80,14 @@ export class TouchInput {
 
         if (!active) return;
 
+        event.preventDefault();
+
         const note =
             this.getNoteAtX(event.clientX);
 
         if (note === null || note === active.note) {
             return;
         }
-
-        event.preventDefault();
 
         this.emitNoteOff(active.note);
 
