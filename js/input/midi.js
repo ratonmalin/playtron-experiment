@@ -3,7 +3,9 @@ export class MidiInput {
         this.eventBus = eventBus;
         this.access = null;
         this.inputs = new Map();
+        this.activeNotes = new Map();
         this.handleMessage = this.handleMessage.bind(this);
+        this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
     }
 
     async start() {
@@ -17,8 +19,24 @@ export class MidiInput {
             this.refreshInputs();
             this.access.onstatechange = event => {
                 console.log("[MIDI] State change:", event.port?.name, event.port?.state);
+
+                if (event.port?.type === "input" && event.port.state === "disconnected") {
+                    this.releaseAll();
+                }
+
                 this.refreshInputs();
             };
+
+            document.addEventListener(
+                "visibilitychange",
+                this.handleVisibilityChange
+            );
+
+            window.addEventListener(
+                "blur",
+                this.releaseAll.bind(this)
+            );
+
             console.log("[MIDI] Ready. Inputs:", this.access.inputs.size);
         } catch (error) {
             console.warn(
@@ -53,6 +71,12 @@ export class MidiInput {
                 channel + 1
             );
 
+            const key = `${channel}-${note}`;
+            this.activeNotes.set(key, {
+                note,
+                channel
+            });
+
             this.eventBus.emit({
                 type: "noteon",
                 note,
@@ -71,6 +95,9 @@ export class MidiInput {
                 channel + 1
             );
 
+            const key = `${channel}-${note}`;
+            this.activeNotes.delete(key);
+
             this.eventBus.emit({
                 type: "noteoff",
                 note,
@@ -79,6 +106,30 @@ export class MidiInput {
                 source: "midi",
                 timestamp: performance.now()
             });
+        }
+    }
+
+    releaseAll() {
+        if (!this.activeNotes.size) return;
+
+        const active = [...this.activeNotes.values()];
+        this.activeNotes.clear();
+
+        for (const { note, channel } of active) {
+            this.eventBus.emit({
+                type: "noteoff",
+                note,
+                velocity: 0,
+                channel,
+                source: "midi",
+                timestamp: performance.now()
+            });
+        }
+    }
+
+    handleVisibilityChange() {
+        if (document.visibilityState !== "visible") {
+            this.releaseAll();
         }
     }
 }
