@@ -178,8 +178,13 @@ export class AudioEngine {
         if (!this.audioContext || !this.masterGain) return;
 
         const audioNote = getAudioNote(event.note);
+        const voiceKey =
+            Number.isFinite(event.rawNote)
+                ? event.rawNote
+                : event.note;
+
         const voiceId =
-            `${event.source}-${event.channel}-${event.note}`;
+            `${event.source}-${event.channel}-${voiceKey}`;
 
         if (this.activeVoices.has(voiceId)) {
             return;
@@ -250,8 +255,13 @@ export class AudioEngine {
     }
 
     noteOff(event) {
+        const voiceKey =
+            Number.isFinite(event.rawNote)
+                ? event.rawNote
+                : event.note;
+
         const voiceId =
-            `${event.source}-${event.channel}-${event.note}`;
+            `${event.source}-${event.channel}-${voiceKey}`;
 
         const voice = this.activeVoices.get(voiceId);
 
