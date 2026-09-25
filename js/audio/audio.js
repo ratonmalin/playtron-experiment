@@ -8,12 +8,6 @@ const voiceModule =
 
 const { Voice } = voiceModule;
 
-function getAudioNote(midiNote) {
-    // Play Playtron one octave above its default C3-and-up range.
-    // The incoming MIDI value itself remains unchanged for visuals and mapping.
-    return midiNote + 12;
-}
-
 export class AudioEngine {
 
     constructor(eventBus) {
@@ -199,7 +193,7 @@ export class AudioEngine {
     noteOn(event) {
         if (!this.audioContext || !this.masterGain) return;
 
-        const audioNote = getAudioNote(event.note);
+        const audioNote = event.note;
         const voiceKey =
             Number.isFinite(event.rawNote)
                 ? event.rawNote
