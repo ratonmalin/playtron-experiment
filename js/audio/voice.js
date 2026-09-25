@@ -35,6 +35,7 @@ export class Voice {
         this.isReleased = false;
         this.releaseTimer = null;
         this.startedAt = null;
+        this.maxHoldTimer = null;
 
         this.systemCount = 1;
         this.nearestDistance = null;
@@ -349,6 +350,14 @@ export class Voice {
         this.oscillatorA.start(now);
         this.oscillatorB.start(now);
         this.oscillatorC.start(now);
+
+        // A MIDI controller can lose a Note Off (USB disconnect, browser
+        // visibility change, device state change). Never leave a voice alive
+        // forever in that case.
+        this.maxHoldTimer = window.setTimeout(
+            () => this.release(),
+            12000
+        );
     }
 
 
@@ -442,7 +451,7 @@ export class Voice {
     }
 
 
-    release() {
+    release(force = false) {
 
         if (this.isReleased) {
             return;
@@ -465,12 +474,13 @@ export class Voice {
                 now - (this.startedAt ?? now)
             );
 
-        const releaseTime =
-            heldFor < 0.45
-                ? 2.0
+        const releaseTime = force
+            ? 0.12
+            : heldFor < 0.45
+                ? 1.1
                 : heldFor < 2
-                    ? 3.5
-                    : 5.5;
+                    ? 1.8
+                    : 2.6;
 
         /*
          * RELEASE ADAPTATIF
@@ -506,7 +516,7 @@ export class Voice {
         this.reverbSend?.gain
             .exponentialRampToValueAtTime(
                 0.0001,
-                now + Math.min(releaseTime, 3.5)
+                now + Math.min(releaseTime, 2.2)
             );
 
 
@@ -531,12 +541,17 @@ export class Voice {
         );
 
 
+        if (this.maxHoldTimer !== null) {
+            clearTimeout(this.maxHoldTimer);
+            this.maxHoldTimer = null;
+        }
+
         this.releaseTimer =
             window.setTimeout(
                 () => {
                     this.disconnect();
                 },
-                (releaseTime + 0.5) * 1000
+                (releaseTime + 0.35) * 1000
             );
     }
 
