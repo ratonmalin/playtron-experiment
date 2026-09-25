@@ -5,7 +5,6 @@ export class TouchInput {
         this.keyboardMapping = keyboardMapping;
         this.notes = Object.values(keyboardMapping);
         this.activePointers = new Map();
-        this.lastTouchTime = 0;
 
         this.handlePointerDown = this.handlePointerDown.bind(this);
         this.handlePointerMove = this.handlePointerMove.bind(this);
@@ -59,7 +58,6 @@ export class TouchInput {
         if (event.pointerType !== "touch") return;
         if (this.isInterfaceControl(event.target)) return;
 
-        this.lastTouchTime = performance.now();
 
         const note = this.getNoteAtX(event.clientX);
 
