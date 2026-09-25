@@ -793,18 +793,15 @@ export class VisualEngine {
         const elapsed = (now - this.lastInteraction) / 1000;
         const sleepElapsed = Math.max(0, elapsed - 30);
 
-        // The background galaxy is part of the permanent environment.
-        // Only the sleep message is conditional on inactivity.
+        // The galaxy is a permanent background layer. It must not depend on
+        // whether a note is currently active.
         if (!idle) {
             this.sleepCycle = -1;
 
             if (idleMessage) {
                 idleMessage.classList.remove("visible");
             }
-        }
-
-        // Choose one message when entering sleep and keep it until a new note.
-        if (this.sleepCycle === -1) {
+        } else if (this.sleepCycle === -1) {
             this.sleepCycle = 0;
 
             const messages = [
@@ -825,10 +822,6 @@ export class VisualEngine {
             idleMessage.classList.add("visible");
         }
 
-        const progress = Math.min(1, sleepElapsed / 8);
-        const messageStrength =
-            0.72 + progress * 0.28;
-
         const elapsedAbsolute = now / 1000;
         const points = [];
 
@@ -846,14 +839,11 @@ export class VisualEngine {
                 innerHeight * (0.16 + Math.floor(index / 4) * 0.34) +
                 Math.cos(angle) * 48;
 
-            const interactionFade = idle
-                ? 1
-                : 0.62;
-
+            // Keep these points readable during interaction. The
+            // sleep message is the only thing that changes with idle state.
             const alpha =
-                (0.34 + 0.10 * Math.sin(elapsedAbsolute * 0.55 + body.phase)) *
-                (1 - messageStrength * 0.72) *
-                interactionFade;
+                0.28 +
+                0.08 * Math.sin(elapsedAbsolute * 0.55 + body.phase);
 
             const hue = (205 + body.phase * 58) % 360;
             points.push({ x, y, hue, body, alpha });
