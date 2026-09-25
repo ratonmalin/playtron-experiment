@@ -29,11 +29,33 @@ export class AudioEngine {
         this.started = false;
 
         this.handleEvent = this.handleEvent.bind(this);
+        this.handleUserGesture = this.handleUserGesture.bind(this);
+
+        document.addEventListener(
+            "pointerdown",
+            this.handleUserGesture,
+            { passive: true }
+        );
+        document.addEventListener(
+            "keydown",
+            this.handleUserGesture,
+            { passive: true }
+        );
 
         eventBus.on("noteon", this.handleEvent);
         eventBus.on("noteoff", this.handleEvent);
 
         console.log("[AUDIO ENGINE] Constructor version:", VERSION);
+    }
+
+    async handleUserGesture() {
+        if (this.started) return;
+
+        try {
+            await this.start();
+        } catch (error) {
+            console.warn("[AUDIO] User gesture could not unlock audio:", error);
+        }
     }
 
     async start() {
