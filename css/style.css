@@ -18,6 +18,7 @@ body {
     margin: 0;
     min-height: 100%;
     background: var(--background);
+    overscroll-behavior: none;
 }
 
 body {
@@ -30,7 +31,8 @@ body {
         BlinkMacSystemFont,
         "Segoe UI",
         sans-serif;
-    overflow-x: hidden;
+    overflow: hidden;
+    touch-action: none;
 }
 
 .app::before {
@@ -54,23 +56,28 @@ body {
 
 .scale-button,
 .fullscreen-button {
-    padding: 6px 9px;
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 3px;
-    color: #ffffff;
+    min-height: 28px;
+    padding: 5px 8px;
+    border: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 0;
+    color: rgba(255, 255, 255, 0.78);
+    font: inherit;
     font-size: 8px;
     letter-spacing: 0.12em;
-    background: rgba(0, 0, 0, 0.5);
+    line-height: 1;
+    background: transparent;
     cursor: pointer;
     pointer-events: auto;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
     transition:
-        color 100ms ease,
-        border-color 100ms ease,
-        background 100ms ease;
+        color 120ms ease,
+        border-color 120ms ease;
 }
 
 .scale-button {
-    min-width: 108px;
+    min-width: 92px;
 }
 
 .scale-button:hover,
@@ -78,9 +85,13 @@ body {
 .fullscreen-button:hover,
 .fullscreen-button:focus-visible {
     color: #ffffff;
-    border-color: rgba(255, 255, 255, 0.42);
-    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.52);
     outline: none;
+}
+
+.scale-button:active,
+.fullscreen-button:active {
+    color: var(--accent);
 }
 
 .app {
@@ -99,9 +110,11 @@ body {
 }
 
 .header-actions {
+    position: relative;
+    z-index: 10;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     pointer-events: auto;
 }
 
@@ -144,6 +157,7 @@ h1 {
 }
 
 .keyboard {
+    position: relative;
     display: flex;
     touch-action: none;
     user-select: none;
@@ -275,7 +289,39 @@ h1 {
 
 @media (max-width: 700px) {
     .app {
-        padding: 22px 18px 96px;
+        padding: 18px 14px 86px;
+    }
+
+    .header {
+        gap: 12px;
+    }
+
+    .header-info {
+        min-width: 0;
+    }
+
+    h1 {
+        font-size: 16px;
+    }
+
+    .header p {
+        font-size: 9px;
+    }
+
+    .header-actions {
+        flex-shrink: 0;
+        gap: 3px;
+    }
+
+    .scale-button,
+    .fullscreen-button {
+        min-height: 26px;
+        padding: 4px 5px;
+        font-size: 7px;
+    }
+
+    .scale-button {
+        min-width: 0;
     }
 
     .instrument {
@@ -298,7 +344,8 @@ h1 {
     }
 
     .key-note {
-        font-size: 16px;
+        font-size: 12px;
+        opacity: 0.38;
     }
 
     .technical-footer {
