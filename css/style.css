@@ -149,7 +149,7 @@ h1 {
     right: 0;
     bottom: 0;
     z-index: 3;
-    pointer-events: auto;
+    pointer-events: none;
     padding: 12px 34px 18px;
     background: linear-gradient(
         to top,
@@ -161,6 +161,7 @@ h1 {
 .keyboard {
     position: relative;
     display: flex;
+    pointer-events: auto;
     touch-action: none;
     user-select: none;
     align-items: flex-end;
@@ -209,10 +210,6 @@ h1 {
 
 .key.active .key-note {
     opacity: 1;
-}
-
-.note-display {
-    display: none;
 }
 
 .technical-footer {
