@@ -109,7 +109,7 @@ export class VisualEngine {
     getVisualStyle() {
         const styles = [
             {
-                palette: ["#8FE7FF", "#B7F0FF", "#D8F8FF", "#74C9E8", "#F1FDFF"],
+                palette: ["#61E7FF", "#FF6B8A", "#B58CFF", "#7CFFB2", "#FFD166", "#F5F7FF", "#4DA6FF"],
                 saturation: 78,
                 lightness: 76,
                 insideForce: 0.065,
@@ -118,7 +118,7 @@ export class VisualEngine {
                 trail: 1
             },
             {
-                palette: ["#D7A4FF", "#F0B7FF", "#FFCCF4", "#A98CFF", "#FFE4FA"],
+                palette: ["#9B5DE5", "#F15BB5", "#00BBF9", "#00F5D4", "#FEE440", "#FF8A5B", "#E8D7FF"],
                 saturation: 82,
                 lightness: 70,
                 insideForce: 0.050,
@@ -127,7 +127,7 @@ export class VisualEngine {
                 trail: 1.35
             },
             {
-                palette: ["#FFE58A", "#FFD36B", "#FFF0B8", "#FFB86B", "#FFF8D6"],
+                palette: ["#FFD166", "#06D6A0", "#118AB2", "#EF476F", "#9B5DE5", "#F8F7FF", "#FF9F1C"],
                 saturation: 86,
                 lightness: 78,
                 insideForce: 0.075,
