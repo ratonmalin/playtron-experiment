@@ -18,6 +18,13 @@ export const SCALES = [
 
 const ROOT_NOTE = 60;
 
+// Playtron normally starts around C3. Keep the physical input mapping
+// musically comfortable for the installation: one octave higher, then
+// quantize into the currently selected scale.
+const PLAYTRON_TRANSPOSE = 12;
+const PLAYTRON_MIN_NOTE = 60;
+const PLAYTRON_MAX_NOTE = 84;
+
 export class ScaleManager {
     constructor() {
         this.index = 0;
@@ -73,9 +80,11 @@ export class ScaleManager {
 
         if (event.type === "noteon") {
             const mappedNote =
-                this.isDiscreteInstrumentSource(event.source)
-                    ? this.mapKeyboardNote(event.note)
-                    : event.note;
+                event.source === "midi"
+                    ? this.mapPlaytronNote(event.note)
+                    : this.isDiscreteInstrumentSource(event.source)
+                        ? this.mapKeyboardNote(event.note)
+                        : event.note;
 
             this.activeNotes.set(key, {
                 event,
@@ -95,9 +104,11 @@ export class ScaleManager {
         const mappedNote =
             active?.mappedNote ??
             (
-                this.isDiscreteInstrumentSource(event.source)
-                    ? this.mapKeyboardNote(event.note)
-                    : event.note
+                event.source === "midi"
+                    ? this.mapPlaytronNote(event.note)
+                    : this.isDiscreteInstrumentSource(event.source)
+                        ? this.mapKeyboardNote(event.note)
+                        : event.note
             );
 
         this.activeNotes.delete(key);
@@ -111,6 +122,16 @@ export class ScaleManager {
 
     isDiscreteInstrumentSource(source) {
         return source === "keyboard" || source === "touch";
+    }
+
+    mapPlaytronNote(note) {
+        const transposed = note + PLAYTRON_TRANSPOSE;
+        const clamped = Math.max(
+            PLAYTRON_MIN_NOTE,
+            Math.min(PLAYTRON_MAX_NOTE, transposed)
+        );
+
+        return this.quantize(clamped);
     }
 
     mapKeyboardNote(note) {
