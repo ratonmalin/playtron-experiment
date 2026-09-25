@@ -9,9 +9,8 @@ const voiceModule =
 const { Voice } = voiceModule;
 
 function getAudioNote(midiNote) {
-    // Keep the selected scale intact and place the audio one octave
-    // below the visual note range.
-    return midiNote - 12;
+    // Play the exact MIDI pitch received by the engine.
+    return midiNote;
 }
 
 export class AudioEngine {
