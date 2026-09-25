@@ -21,9 +21,8 @@ const ROOT_NOTE = 60;
 // Playtron normally starts around C3. Keep the physical input mapping
 // musically comfortable for the installation: one octave higher, then
 // quantize into the currently selected scale.
-const PLAYTRON_TRANSPOSE = 12;
-const PLAYTRON_MIN_NOTE = 60;
-const PLAYTRON_MAX_NOTE = 84;
+const PLAYTRON_BASE_NOTE = 48;
+const PLAYTRON_INPUT_COUNT = 16;
 
 export class ScaleManager {
     constructor() {
@@ -125,13 +124,27 @@ export class ScaleManager {
     }
 
     mapPlaytronNote(note) {
-        const transposed = note + PLAYTRON_TRANSPOSE;
-        const clamped = Math.max(
-            PLAYTRON_MIN_NOTE,
-            Math.min(PLAYTRON_MAX_NOTE, transposed)
+        // Playtron has 16 physical inputs. Do not quantize the raw MIDI
+        // note by proximity: several different inputs would collapse onto
+        // the same pentatonic note. Instead, use the raw input as an index
+        // in the current scale so every physical input stays distinct.
+        const index = Math.max(
+            0,
+            Math.min(
+                PLAYTRON_INPUT_COUNT - 1,
+                Math.round(note - PLAYTRON_BASE_NOTE)
+            )
         );
 
-        return this.quantize(clamped);
+        const intervals = this.currentScale.intervals;
+        const octave = Math.floor(index / intervals.length);
+        const degree = index % intervals.length;
+
+        return (
+            ROOT_NOTE +
+            octave * 12 +
+            intervals[degree]
+        );
     }
 
     mapKeyboardNote(note) {
