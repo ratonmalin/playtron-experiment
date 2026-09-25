@@ -73,7 +73,9 @@ export class ScaleManager {
 
         if (event.type === "noteon") {
             const mappedNote =
-                this.quantize(event.note);
+                this.isDiscreteInstrumentSource(event.source)
+                    ? this.mapKeyboardNote(event.note)
+                    : this.quantize(event.note);
 
             this.activeNotes.set(key, {
                 event,
@@ -92,7 +94,11 @@ export class ScaleManager {
 
         const mappedNote =
             active?.mappedNote ??
-            this.quantize(event.note);
+            (
+                this.isDiscreteInstrumentSource(event.source)
+                    ? this.mapKeyboardNote(event.note)
+                    : this.quantize(event.note)
+            );
 
         this.activeNotes.delete(key);
 
@@ -101,6 +107,10 @@ export class ScaleManager {
             rawNote: event.note,
             note: mappedNote
         };
+    }
+
+    isDiscreteInstrumentSource(source) {
+        return source === "keyboard" || source === "touch";
     }
 
     mapKeyboardNote(note) {
