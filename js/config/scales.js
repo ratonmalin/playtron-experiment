@@ -1,36 +1,31 @@
 export const SCALES = [
     {
-        id: "major-pentatonic",
+        id: "major",
         label: "MAJEURE",
-        intervals: [0, 2, 4, 7, 9]
+        intervals: [0, 2, 4, 5, 7, 9, 11]
     },
     {
-        id: "minor-pentatonic",
+        id: "minor",
         label: "MINEURE",
-        intervals: [0, 3, 5, 7, 10]
+        intervals: [0, 2, 3, 5, 7, 8, 10]
     },
     {
-        id: "suspended-pentatonic",
+        id: "suspended",
         label: "SUSPENDUE",
-        intervals: [0, 2, 5, 7, 10]
+        intervals: [0, 2, 5, 7, 9, 10, 12]
     }
 ];
 
 const PLAYTRON_ROOT_NOTE = 50;
 const KEYBOARD_ROOT_NOTE = 50;
 const PLAYTRON_INPUT_COUNT = 16;
-
-// Playtron is configured with a low MIDI register. We transpose the
-// incoming notes as a block instead of compressing them into scale degrees.
-// This is important: 16 physical inputs must remain 16 distinct MIDI notes.
-// The selected scale is still available to the visual system, but it must
-// not collapse several Playtron inputs onto the same pitch.
-const PLAYTRON_TRANSPOSE = 26;
+const PLAYTRON_MAX_SCALE_STEP = PLAYTRON_INPUT_COUNT - 1;
 
 export class ScaleManager {
     constructor() {
         this.index = 0;
         this.activeNotes = new Map();
+        this.playtronRawNotes = [];
     }
 
     get currentScale() {
@@ -129,19 +124,39 @@ export class ScaleManager {
             return PLAYTRON_ROOT_NOTE;
         }
 
-        return note + PLAYTRON_TRANSPOSE;
+        if (!this.playtronRawNotes.includes(note)) {
+            this.playtronRawNotes.push(note);
+            this.playtronRawNotes.sort((a, b) => a - b);
+
+            if (this.playtronRawNotes.length > PLAYTRON_INPUT_COUNT) {
+                this.playtronRawNotes.shift();
+            }
+        }
+
+        const index = Math.max(
+            0,
+            this.playtronRawNotes.indexOf(note)
+        );
+
+        return this.scaleNote(
+            PLAYTRON_ROOT_NOTE,
+            index
+        );
     }
 
     mapKeyboardNote(note) {
         const keyboardIndex = Math.max(
             0,
             Math.min(
-                PLAYTRON_INPUT_COUNT - 1,
+                PLAYTRON_MAX_SCALE_STEP,
                 Math.round(note - 60)
             )
         );
 
-        return KEYBOARD_ROOT_NOTE + keyboardIndex;
+        return this.scaleNote(
+            KEYBOARD_ROOT_NOTE,
+            keyboardIndex
+        );
     }
 
     scaleNote(rootNote, scaleSteps) {
@@ -173,9 +188,9 @@ export class ScaleManager {
 
                 const distance = Math.abs(candidate - note);
 
-                if (distance < nearestDistance) {
+                if (Math.abs(candidate - note) < nearestDistance) {
                     nearestNote = candidate;
-                    nearestDistance = distance;
+                    nearestDistance = Math.abs(candidate - note);
                 }
             }
         }
