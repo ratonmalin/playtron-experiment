@@ -45,8 +45,6 @@ const scaledInputBus = {
 };
 
 const keyboardElement = document.querySelector("#keyboard");
-const lastEventElement = document.querySelector("#last-event");
-
 const keyboard = new KeyboardInput(scaledInputBus);
 const touch = new TouchInput(
     scaledInputBus,
@@ -95,6 +93,7 @@ if (scaleButton) {
         updateScaleButton();
     });
 
+    createKeyboardUI();
     updateScaleButton();
 }
 
@@ -129,9 +128,12 @@ function createKeyboardUI() {
         element.className = "key";
         element.dataset.key = key;
 
+        const mappedNote =
+            scaleManager.mapKeyboardNote(midiNote);
+
         element.innerHTML = `
             <span class="key-note">
-                ${midiToNoteName(midiNote)}
+                ${midiToNoteName(mappedNote)}
             </span>
         `;
 
@@ -204,26 +206,12 @@ function findKeyForNote(note) {
     return null;
 }
 
-function displayEvent(event) {
-    const noteName = midiToNoteName(event.note);
-    const velocity = event.velocity.toFixed(2);
-
-    lastEventElement.textContent =
-        `${event.type} · ${noteName} · MIDI ${event.note} · velocity ${velocity} · ${event.source}`;
-}
-
 eventBus.on("noteon", event => {
-    console.log("[NOTE ON]", event);
-
     updateKeyboardKey(event);
-    displayEvent(event);
 });
 
 eventBus.on("noteoff", event => {
-    console.log("[NOTE OFF]", event);
-
     updateKeyboardKey(event);
-    displayEvent(event);
 });
 
 createKeyboardUI();
