@@ -2,17 +2,21 @@ export const SCALES = [
     {
         id: "major",
         label: "MAJEURE",
-        intervals: [0, 2, 4, 5, 7, 9, 11]
+        // Ionian palette, extended with the octave so 16 inputs
+        // can remain distinct without leaving the harmonic family.
+        intervals: [0, 2, 4, 5, 7, 9, 11, 12]
     },
     {
         id: "minor",
         label: "MINEURE",
-        intervals: [0, 2, 3, 5, 7, 8, 10]
+        // Natural minor palette.
+        intervals: [0, 2, 3, 5, 7, 8, 10, 12]
     },
     {
         id: "suspended",
         label: "SUSPENDUE",
-        intervals: [0, 2, 5, 7, 9, 10, 12]
+        // Suspended / open palette: no third, with a strong 4th/5th character.
+        intervals: [0, 2, 5, 7, 9, 10, 12, 14]
     }
 ];
 
@@ -188,9 +192,9 @@ export class ScaleManager {
 
                 const distance = Math.abs(candidate - note);
 
-                if (Math.abs(candidate - note) < nearestDistance) {
+                if (distance < nearestDistance) {
                     nearestNote = candidate;
-                    nearestDistance = Math.abs(candidate - note);
+                    nearestDistance = distance;
                 }
             }
         }
