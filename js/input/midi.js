@@ -15,8 +15,11 @@ export class MidiInput {
         try {
             this.access = await navigator.requestMIDIAccess();
             this.refreshInputs();
-            this.access.onstatechange = () => this.refreshInputs();
-            console.log("[MIDI] Ready.");
+            this.access.onstatechange = event => {
+                console.log("[MIDI] State change:", event.port?.name, event.port?.state);
+                this.refreshInputs();
+            };
+            console.log("[MIDI] Ready. Inputs:", this.access.inputs.size);
         } catch (error) {
             console.warn(
                 "[MIDI] Access unavailable:",
