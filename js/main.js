@@ -91,6 +91,12 @@ if (scaleButton) {
         }
 
         updateScaleButton();
+
+        eventBus.emit({
+            type: "scalechange",
+            index: scaleManager.index,
+            scale: scaleManager.currentScale
+        });
     });
 
     createKeyboardUI();
