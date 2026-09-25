@@ -109,17 +109,19 @@ export class VisualEngine {
     getVisualStyle() {
         const styles = [
             {
-                hueShift: 0,
-                saturation: 62,
-                lightness: 78,
+                baseHue: 192,
+                hueRange: 28,
+                saturation: 78,
+                lightness: 76,
                 insideForce: 0.065,
                 drag: 0.9992,
                 maxSpeed: 1,
                 trail: 1
             },
             {
-                hueShift: -28,
-                saturation: 56,
+                baseHue: 304,
+                hueRange: 34,
+                saturation: 82,
                 lightness: 70,
                 insideForce: 0.050,
                 drag: 0.9987,
@@ -127,9 +129,10 @@ export class VisualEngine {
                 trail: 1.35
             },
             {
-                hueShift: 22,
-                saturation: 68,
-                lightness: 82,
+                baseHue: 48,
+                hueRange: 30,
+                saturation: 86,
+                lightness: 78,
                 insideForce: 0.075,
                 drag: 0.9995,
                 maxSpeed: 1.12,
@@ -143,7 +146,13 @@ export class VisualEngine {
     getNoteHue(note) {
         const safeNote = Number.isFinite(note) ? note : 48;
         const style = this.getVisualStyle();
-        return ((safeNote - 48) * 27.6923076923 + 195 + style.hueShift + 360) % 360;
+        const notePosition =
+            Math.min(1, Math.max(0, (safeNote - 48) / 36));
+        return (
+            style.baseHue +
+            notePosition * style.hueRange +
+            360
+        ) % 360;
     }
 
     getNoteProfile(note) {
