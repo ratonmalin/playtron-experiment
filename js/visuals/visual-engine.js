@@ -109,8 +109,7 @@ export class VisualEngine {
     getVisualStyle() {
         const styles = [
             {
-                baseHue: 192,
-                hueRange: 28,
+                palette: ["#8FE7FF", "#B7F0FF", "#D8F8FF", "#74C9E8", "#F1FDFF"],
                 saturation: 78,
                 lightness: 76,
                 insideForce: 0.065,
@@ -119,8 +118,7 @@ export class VisualEngine {
                 trail: 1
             },
             {
-                baseHue: 304,
-                hueRange: 34,
+                palette: ["#D7A4FF", "#F0B7FF", "#FFCCF4", "#A98CFF", "#FFE4FA"],
                 saturation: 82,
                 lightness: 70,
                 insideForce: 0.050,
@@ -129,8 +127,7 @@ export class VisualEngine {
                 trail: 1.35
             },
             {
-                baseHue: 48,
-                hueRange: 30,
+                palette: ["#FFE58A", "#FFD36B", "#FFF0B8", "#FFB86B", "#FFF8D6"],
                 saturation: 86,
                 lightness: 78,
                 insideForce: 0.075,
@@ -146,13 +143,20 @@ export class VisualEngine {
     getNoteHue(note) {
         const safeNote = Number.isFinite(note) ? note : 48;
         const style = this.getVisualStyle();
-        const notePosition =
-            Math.min(1, Math.max(0, (safeNote - 48) / 36));
-        return (
-            style.baseHue +
-            notePosition * style.hueRange +
-            360
-        ) % 360;
+        const paletteIndex =
+            Math.abs(Math.round(safeNote - 60)) %
+            style.palette.length;
+
+        return style.palette[paletteIndex];
+    }
+
+    hexToRgba(hex, alpha) {
+        const value = hex.replace("#", "");
+        const red = parseInt(value.slice(0, 2), 16);
+        const green = parseInt(value.slice(2, 4), 16);
+        const blue = parseInt(value.slice(4, 6), 16);
+
+        return `${red}, ${green}, ${blue}, ${alpha}`;
     }
 
     getNoteProfile(note) {
@@ -980,7 +984,7 @@ export class VisualEngine {
                         style.trail;
 
                 ctx.strokeStyle =
-                    `hsla(${item.hue}, 52%, 76%, ${trailAlpha})`;
+                    `rgba(${this.hexToRgba(item.hue, trailAlpha)})`;
                 ctx.lineWidth =
                     0.65 + item.velocity * 0.45;
                 ctx.stroke();
@@ -990,14 +994,14 @@ export class VisualEngine {
             ctx.beginPath();
             ctx.arc(item.x, item.y, radius * 3.8, 0, Math.PI * 2);
             ctx.strokeStyle =
-                `hsla(${item.hue}, 58%, 62%, ${0.16 * life})`;
+                `rgba(${this.hexToRgba(item.hue, 0.16 * life)})`;
             ctx.lineWidth = 1;
             ctx.stroke();
 
             ctx.beginPath();
             ctx.arc(item.x, item.y, radius, 0, Math.PI * 2);
             ctx.fillStyle =
-                `hsla(${item.hue}, 68%, 68%, ${0.92 * life})`;
+                `rgba(${this.hexToRgba(item.hue, 0.92 * life)})`;
             ctx.fill();
 
             if (item.chaotic) {
@@ -1029,7 +1033,7 @@ export class VisualEngine {
                     Math.PI * 2
                 );
                 ctx.strokeStyle =
-                    `hsla(${item.hue}, 68%, 72%, ${0.22 * life})`;
+                    `rgba(${this.hexToRgba(item.hue, 0.22 * life)})`;
                 ctx.stroke();
             }
         }
