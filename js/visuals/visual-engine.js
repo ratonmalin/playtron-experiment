@@ -184,7 +184,12 @@ export class VisualEngine {
                     Number.isFinite(event.velocity) ? event.velocity : 1
                 )
             );
-            existing.born = now;
+            // Do not reset born on repeated Note On messages.
+            // Playtron can retrigger a held note; resetting the age here
+            // also resets the global trail reveal and makes the whole
+            // background galaxy fade/restart.
+            existing.lastRetriggerAt = now;
+            existing.retriggerPulse = 1;
             return;
         }
 
