@@ -82,7 +82,13 @@ function updateScaleButton() {
 }
 
 if (scaleButton) {
-    scaleButton.addEventListener("click", () => {
+    scaleButton.addEventListener("click", async () => {
+        try {
+            await audioEngine.start();
+        } catch (error) {
+            console.warn("[AUDIO] Setup gesture could not unlock audio:", error);
+        }
+
         const { releases } =
             scaleManager.next();
 
@@ -105,6 +111,12 @@ if (scaleButton) {
 
 if (fullscreenButton) {
     fullscreenButton.addEventListener("click", async () => {
+        try {
+            await audioEngine.start();
+        } catch (error) {
+            console.warn("[AUDIO] Setup gesture could not unlock audio:", error);
+        }
+
         try {
             if (document.fullscreenElement) {
                 await document.exitFullscreen();
