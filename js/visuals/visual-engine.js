@@ -19,14 +19,18 @@ export class VisualEngine {
         this.sleepCycle = -1;
         this.sleepMessageIndex = -1;
         this.interactionCount = 0;
+        this.visualStyleIndex = 0;
+        this.visualStyleChangedAt = performance.now();
 
         this.onNoteOn = this.onNoteOn.bind(this);
         this.onNoteOff = this.onNoteOff.bind(this);
+        this.onScaleChange = this.onScaleChange.bind(this);
         this.frame = this.frame.bind(this);
         this.handleResize = this.handleResize.bind(this);
 
         eventBus.on("noteon", this.onNoteOn);
         eventBus.on("noteoff", this.onNoteOff);
+        eventBus.on("scalechange", this.onScaleChange);
     }
 
     start() {
@@ -92,9 +96,54 @@ export class VisualEngine {
         return `${event.source}-${event.channel}-${event.note}`;
     }
 
+    onScaleChange(event) {
+        if (!Number.isFinite(event?.index)) return;
+
+        this.visualStyleIndex =
+            ((event.index % 3) + 3) % 3;
+
+        this.visualStyleChangedAt = performance.now();
+        this.lastInteraction = performance.now();
+    }
+
+    getVisualStyle() {
+        const styles = [
+            {
+                hueShift: 0,
+                saturation: 62,
+                lightness: 78,
+                insideForce: 0.065,
+                drag: 0.9992,
+                maxSpeed: 1,
+                trail: 1
+            },
+            {
+                hueShift: -28,
+                saturation: 56,
+                lightness: 70,
+                insideForce: 0.050,
+                drag: 0.9987,
+                maxSpeed: 0.88,
+                trail: 1.35
+            },
+            {
+                hueShift: 22,
+                saturation: 68,
+                lightness: 82,
+                insideForce: 0.075,
+                drag: 0.9995,
+                maxSpeed: 1.12,
+                trail: 0.78
+            }
+        ];
+
+        return styles[this.visualStyleIndex] ?? styles[0];
+    }
+
     getNoteHue(note) {
         const safeNote = Number.isFinite(note) ? note : 48;
-        return ((safeNote - 48) * 27.6923076923 + 195) % 360;
+        const style = this.getVisualStyle();
+        return ((safeNote - 48) * 27.6923076923 + 195 + style.hueShift + 360) % 360;
     }
 
     getNoteProfile(note) {
@@ -334,7 +383,8 @@ export class VisualEngine {
                 const fieldRadius =
                     Math.min(innerWidth, innerHeight) * 0.30;
 
-                const insideForce = 0.065;
+                const style = this.getVisualStyle();
+                const insideForce = style.insideForce;
                 ax += centerDx * insideForce;
                 ay += centerDy * insideForce;
 
@@ -388,8 +438,10 @@ export class VisualEngine {
 
                 const speed = Math.hypot(item.vx, item.vy);
                 const maxSpeed =
-                    (count >= 4 ? 150 : 120) +
-                    noteProfile * (count >= 4 ? 90 : 70);
+                    (
+                        (count >= 4 ? 150 : 120) +
+                        noteProfile * (count >= 4 ? 90 : 70)
+                    ) * style.maxSpeed;
 
                 if (speed > maxSpeed) {
                     item.vx =
@@ -400,8 +452,8 @@ export class VisualEngine {
 
                 // Keep enough momentum for visible orbital motion without
                 // letting the system accelerate indefinitely.
-                item.vx *= 0.9992;
-                item.vy *= 0.9992;
+                item.vx *= style.drag;
+                item.vy *= style.drag;
 
                 item.x += item.vx * dt;
                 item.y += item.vy * dt;
@@ -886,9 +938,10 @@ export class VisualEngine {
                     });
                 }
 
+                const style = this.getVisualStyle();
                 const maxTrailAge = item.releasedAt
-                    ? 5.2
-                    : 8;
+                    ? 5.2 * style.trail
+                    : 8 * style.trail;
 
                 item.trail = item.trail.filter(
                     point => (now - point.born) / 1000 < maxTrailAge
@@ -910,9 +963,12 @@ export class VisualEngine {
                     }
                 }
 
+                const style = this.getVisualStyle();
                 const trailAlpha = item.releasedAt
                     ? 0.06 * life
-                    : (0.035 + trailRevealEase * 0.20) * life;
+                    : (0.035 + trailRevealEase * 0.20) *
+                        life *
+                        style.trail;
 
                 ctx.strokeStyle =
                     `hsla(${item.hue}, 52%, 76%, ${trailAlpha})`;
