@@ -16,7 +16,8 @@ export const SCALES = [
     }
 ];
 
-const ROOT_NOTE = 48;
+const PLAYTRON_ROOT_NOTE = 48;
+const KEYBOARD_ROOT_NOTE = 48;
 const PLAYTRON_INPUT_COUNT = 16;
 const PLAYTRON_MAX_SCALE_STEP = 7;
 
@@ -120,7 +121,7 @@ export class ScaleManager {
 
     mapPlaytronNote(note) {
         if (!Number.isFinite(note)) {
-            return ROOT_NOTE;
+            return PLAYTRON_ROOT_NOTE;
         }
 
         if (!this.playtronRawNotes.includes(note)) {
@@ -137,49 +138,54 @@ export class ScaleManager {
             this.playtronRawNotes.indexOf(note)
         );
 
-        // Keep the whole Playtron in a low, comfortable register.
-        // The 16 physical inputs are distributed across eight scale steps,
-        // from C3 up to the corresponding fifth/octave area, rather than
-        // spanning multiple octaves.
         const scaleSteps = Math.round(
-            index *
-            PLAYTRON_MAX_SCALE_STEP /
+            index * PLAYTRON_MAX_SCALE_STEP /
             (PLAYTRON_INPUT_COUNT - 1)
         );
 
+        return this.scaleNote(
+            PLAYTRON_ROOT_NOTE,
+            scaleSteps
+        );
+    }
+
+    mapKeyboardNote(note) {
+        const keyboardIndex = Math.max(
+            0,
+            Math.min(
+                15,
+                Math.round(note - 60)
+            )
+        );
+
+        // The test keyboard follows exactly the same low register as
+        // the Playtron, so testing with the keyboard gives a realistic
+        // preview of the final installation.
+        const scaleSteps = Math.round(
+            keyboardIndex * PLAYTRON_MAX_SCALE_STEP / 15
+        );
+
+        return this.scaleNote(
+            KEYBOARD_ROOT_NOTE,
+            scaleSteps
+        );
+    }
+
+    scaleNote(rootNote, scaleSteps) {
         const intervals = this.currentScale.intervals;
         const octave = Math.floor(scaleSteps / intervals.length);
         const degree = scaleSteps % intervals.length;
 
         return (
-            ROOT_NOTE +
+            rootNote +
             octave * 12 +
             intervals[degree]
         );
     }
 
-    mapKeyboardNote(note) {
-        const keyboardIndex = Math.round(note - 60);
-
-        if (keyboardIndex < 0 || keyboardIndex >= 17) {
-            return this.quantize(note);
-        }
-
-        const intervals = this.currentScale.intervals;
-        const degree = keyboardIndex;
-        const octave = Math.floor(degree / intervals.length);
-        const scaleDegree = degree % intervals.length;
-
-        return (
-            60 +
-            octave * 12 +
-            intervals[scaleDegree]
-        );
-    }
-
     quantize(note) {
         const intervals = this.currentScale.intervals;
-        const relative = note - 60;
+        const relative = note - KEYBOARD_ROOT_NOTE;
         const octave = Math.floor(relative / 12);
 
         let nearestNote = null;
@@ -188,7 +194,7 @@ export class ScaleManager {
         for (const octaveOffset of [-1, 0, 1]) {
             for (const interval of intervals) {
                 const candidate =
-                    60 +
+                    KEYBOARD_ROOT_NOTE +
                     (octave + octaveOffset) * 12 +
                     interval;
 
