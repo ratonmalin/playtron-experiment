@@ -19,6 +19,7 @@ export class AudioEngine {
         this.reverb = null;
         this.reverbGain = null;
         this.activeVoices = new Map();
+        this.pendingNotes = new Map();
         this.maxVoices = 16;
         this.started = false;
 
@@ -38,6 +39,19 @@ export class AudioEngine {
 
         eventBus.on("noteon", this.handleEvent);
         eventBus.on("noteoff", this.handleEvent);
+
+        this.handleWindowBlur = () => this.panic();
+        this.handleVisibilityChange = () => {
+            if (document.visibilityState !== "visible") {
+                this.panic();
+            }
+        };
+
+        window.addEventListener("blur", this.handleWindowBlur);
+        document.addEventListener(
+            "visibilitychange",
+            this.handleVisibilityChange
+        );
 
         console.log("[AUDIO ENGINE] Constructor version:", VERSION);
     }
@@ -104,7 +118,7 @@ export class AudioEngine {
 
         this.reverbInput = context.createGain();
 
-        const duration = 7.0;
+        const duration = 4.2;
         const decay = 5.5;
         const sampleRate = context.sampleRate;
         const length = Math.floor(sampleRate * duration);
@@ -163,19 +177,28 @@ export class AudioEngine {
             return;
         }
 
-        if (event.type === "noteoff" && !this.started) {
-            return;
-        }
+        const pendingKey =
+            `${event.source}-${event.channel}-${Number.isFinite(event.rawNote) ? event.rawNote : event.note}`;
 
         if (!this.started) {
+            if (event.type === "noteon") {
+                this.pendingNotes.set(pendingKey, event);
+            } else {
+                this.pendingNotes.delete(pendingKey);
+            }
+
             this.start()
                 .then(() => {
-                    if (event.type === "noteon") {
-                        this.noteOn(event);
+                    for (const [key, pendingEvent] of this.pendingNotes) {
+                        this.pendingNotes.delete(key);
+                        if (pendingEvent.type === "noteon") {
+                            this.noteOn(pendingEvent);
+                        }
                     }
                 })
                 .catch(error => {
                     console.warn("[AUDIO] Waiting for user interaction:", error);
+                    this.pendingNotes.clear();
                 });
 
             return;
@@ -291,8 +314,14 @@ export class AudioEngine {
     }
 
     panic() {
+        this.pendingNotes.clear();
+
         for (const voice of this.activeVoices.values()) {
-            voice.release();
+            try {
+                voice.release(true);
+            } catch (error) {
+                console.warn("[AUDIO] Panic release:", error);
+            }
         }
 
         this.activeVoices.clear();
