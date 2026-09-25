@@ -46,7 +46,6 @@ export class ScaleManager {
         }
 
         this.activeNotes.clear();
-
         this.index =
             (this.index + 1) % SCALES.length;
 
@@ -66,8 +65,10 @@ export class ScaleManager {
         }
 
         const key =
-            event.source + "-" +
-            event.channel + "-" +
+            event.source +
+            "-" +
+            event.channel +
+            "-" +
             event.note;
 
         if (event.type === "noteon") {
@@ -102,11 +103,36 @@ export class ScaleManager {
         };
     }
 
+    mapKeyboardNote(note) {
+        const keyboardIndex =
+            Math.round(note - ROOT_NOTE);
+
+        if (
+            keyboardIndex < 0 ||
+            keyboardIndex >= 17
+        ) {
+            return this.quantize(note);
+        }
+
+        const intervals = this.currentScale.intervals;
+        const degree = keyboardIndex;
+        const octave = Math.floor(
+            degree / intervals.length
+        );
+        const scaleDegree =
+            degree % intervals.length;
+
+        return (
+            ROOT_NOTE +
+            octave * 12 +
+            intervals[scaleDegree]
+        );
+    }
+
     quantize(note) {
         const intervals = this.currentScale.intervals;
         const relative = note - ROOT_NOTE;
         const octave = Math.floor(relative / 12);
-        const pitchClass = ((relative % 12) + 12) % 12;
 
         let nearestNote = null;
         let nearestDistance = Infinity;
