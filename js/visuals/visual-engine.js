@@ -790,18 +790,18 @@ export class VisualEngine {
         const idle = now - this.lastInteraction > 30000;
         const idleMessage = document.getElementById("idle-message");
 
+        const elapsed = (now - this.lastInteraction) / 1000;
+        const sleepElapsed = Math.max(0, elapsed - 30);
+
+        // The background galaxy is part of the permanent environment.
+        // Only the sleep message is conditional on inactivity.
         if (!idle) {
             this.sleepCycle = -1;
 
             if (idleMessage) {
                 idleMessage.classList.remove("visible");
             }
-
-            return;
         }
-
-        const elapsed = (now - this.lastInteraction) / 1000;
-        const sleepElapsed = Math.max(0, elapsed - 30);
 
         // Choose one message when entering sleep and keep it until a new note.
         if (this.sleepCycle === -1) {
@@ -846,9 +846,14 @@ export class VisualEngine {
                 innerHeight * (0.16 + Math.floor(index / 4) * 0.34) +
                 Math.cos(angle) * 48;
 
+            const interactionFade = idle
+                ? 1
+                : 0.62;
+
             const alpha =
                 (0.34 + 0.10 * Math.sin(elapsedAbsolute * 0.55 + body.phase)) *
-                (1 - messageStrength * 0.72);
+                (1 - messageStrength * 0.72) *
+                interactionFade;
 
             const hue = (205 + body.phase * 58) % 360;
             points.push({ x, y, hue, body, alpha });
