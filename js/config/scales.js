@@ -18,6 +18,7 @@ export const SCALES = [
 
 const ROOT_NOTE = 48;
 const PLAYTRON_INPUT_COUNT = 16;
+const PLAYTRON_MAX_SCALE_STEP = 7;
 
 export class ScaleManager {
     constructor() {
@@ -136,12 +137,14 @@ export class ScaleManager {
             this.playtronRawNotes.indexOf(note)
         );
 
-        // Compress the 16 Playtron inputs into a comfortable range of
-        // roughly two octaves while preserving the selected scale.
-        // Several physical inputs can intentionally share a pitch at the
-        // edge of the range; the visual layer still distinguishes them.
+        // Keep the whole Playtron in a low, comfortable register.
+        // The 16 physical inputs are distributed across eight scale steps,
+        // from C3 up to the corresponding fifth/octave area, rather than
+        // spanning multiple octaves.
         const scaleSteps = Math.round(
-            index * 10 / (PLAYTRON_INPUT_COUNT - 1)
+            index *
+            PLAYTRON_MAX_SCALE_STEP /
+            (PLAYTRON_INPUT_COUNT - 1)
         );
 
         const intervals = this.currentScale.intervals;
