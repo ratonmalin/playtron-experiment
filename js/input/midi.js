@@ -6,6 +6,7 @@ export class MidiInput {
         this.activeNotes = new Map();
         this.handleMessage = this.handleMessage.bind(this);
         this.handleVisibilityChange = this.handleVisibilityChange.bind(this);
+        this.handleWindowBlur = this.releaseAll.bind(this);
     }
 
     async start() {
