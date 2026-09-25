@@ -16,8 +16,8 @@ export const SCALES = [
     }
 ];
 
-const PLAYTRON_ROOT_NOTE = 48;
-const KEYBOARD_ROOT_NOTE = 48;
+const PLAYTRON_ROOT_NOTE = 50;
+const KEYBOARD_ROOT_NOTE = 50;
 const PLAYTRON_INPUT_COUNT = 16;
 const PLAYTRON_MAX_SCALE_STEP = 7;
 
@@ -158,9 +158,6 @@ export class ScaleManager {
             )
         );
 
-        // The test keyboard follows exactly the same low register as
-        // the Playtron, so testing with the keyboard gives a realistic
-        // preview of the final installation.
         const scaleSteps = Math.round(
             keyboardIndex * PLAYTRON_MAX_SCALE_STEP / 15
         );
