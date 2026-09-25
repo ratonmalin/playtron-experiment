@@ -75,7 +75,7 @@ export class ScaleManager {
             const mappedNote =
                 this.isDiscreteInstrumentSource(event.source)
                     ? this.mapKeyboardNote(event.note)
-                    : this.quantize(event.note);
+                    : event.note;
 
             this.activeNotes.set(key, {
                 event,
@@ -97,7 +97,7 @@ export class ScaleManager {
             (
                 this.isDiscreteInstrumentSource(event.source)
                     ? this.mapKeyboardNote(event.note)
-                    : this.quantize(event.note)
+                    : event.note
             );
 
         this.activeNotes.delete(key);
