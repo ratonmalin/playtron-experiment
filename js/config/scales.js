@@ -16,24 +16,14 @@ export const SCALES = [
     }
 ];
 
-const ROOT_NOTE = 60;
-
-// Playtron's factory mapping is 16 consecutive MIDI notes starting at C3.
- // We deliberately map those 16 physical inputs by index rather than
- // quantizing each raw MIDI note independently: a pentatonic scale cannot
- // represent 16 distinct inputs inside a single octave without collisions.
-// Do not assume the device is currently configured to C3. Playtron
-// stores its pin mapping, so a device configured to C1..D#2 is perfectly
-// valid. We detect the 16-note chromatic window from the raw MIDI values
-// instead of hard-coding one octave.
+const ROOT_NOTE = 48;
 const PLAYTRON_INPUT_COUNT = 16;
 
 export class ScaleManager {
     constructor() {
         this.index = 0;
         this.activeNotes = new Map();
-        this.playtronMinRawNote = null;
-        this.playtronMaxRawNote = null;
+        this.playtronRawNotes = [];
     }
 
     get currentScale() {
@@ -58,8 +48,7 @@ export class ScaleManager {
         }
 
         this.activeNotes.clear();
-        this.index =
-            (this.index + 1) % SCALES.length;
+        this.index = (this.index + 1) % SCALES.length;
 
         return {
             scale: this.currentScale,
@@ -103,8 +92,7 @@ export class ScaleManager {
             };
         }
 
-        const active =
-            this.activeNotes.get(key);
+        const active = this.activeNotes.get(key);
 
         const mappedNote =
             active?.mappedNote ??
@@ -134,51 +122,31 @@ export class ScaleManager {
             return ROOT_NOTE;
         }
 
-        if (!Number.isFinite(this.playtronMinRawNote)) {
-            // Start at the C of the octave containing the first raw note.
-            // If a later lower note arrives (e.g. first D2, then C1), the
-            // window is expanded downward as long as all 16 inputs still fit.
-            this.playtronMinRawNote =
-                Math.floor(note / 12) * 12;
+        if (!this.playtronRawNotes.includes(note)) {
+            this.playtronRawNotes.push(note);
+            this.playtronRawNotes.sort((a, b) => a - b);
+
+            if (this.playtronRawNotes.length > PLAYTRON_INPUT_COUNT) {
+                this.playtronRawNotes.shift();
+            }
         }
 
-        const candidateMin =
-            Math.min(
-                this.playtronMinRawNote,
-                Math.floor(note / 12) * 12
-            );
-
-        const candidateMax =
-            Math.max(
-                this.playtronMaxRawNote ?? note,
-                note
-            );
-
-        if (
-            candidateMax - candidateMin <
-            PLAYTRON_INPUT_COUNT
-        ) {
-            this.playtronMinRawNote = candidateMin;
-            this.playtronMaxRawNote = candidateMax;
-        } else if (!Number.isFinite(this.playtronMaxRawNote)) {
-            this.playtronMaxRawNote = note;
-        }
-
-        // Playtron's 16 inputs are consecutive MIDI notes in the normal
-        // configuration. This also works when the stored range starts at
-        // C1, C2, C3, etc. It prevents an entire lower octave from being
-        // clamped to one note.
         const index = Math.max(
             0,
-            Math.min(
-                PLAYTRON_INPUT_COUNT - 1,
-                Math.round(note - this.playtronMinRawNote)
-            )
+            this.playtronRawNotes.indexOf(note)
+        );
+
+        // Compress the 16 Playtron inputs into a comfortable range of
+        // roughly two octaves while preserving the selected scale.
+        // Several physical inputs can intentionally share a pitch at the
+        // edge of the range; the visual layer still distinguishes them.
+        const scaleSteps = Math.round(
+            index * 10 / (PLAYTRON_INPUT_COUNT - 1)
         );
 
         const intervals = this.currentScale.intervals;
-        const octave = Math.floor(index / intervals.length);
-        const degree = index % intervals.length;
+        const octave = Math.floor(scaleSteps / intervals.length);
+        const degree = scaleSteps % intervals.length;
 
         return (
             ROOT_NOTE +
@@ -188,26 +156,19 @@ export class ScaleManager {
     }
 
     mapKeyboardNote(note) {
-        const keyboardIndex =
-            Math.round(note - ROOT_NOTE);
+        const keyboardIndex = Math.round(note - 60);
 
-        if (
-            keyboardIndex < 0 ||
-            keyboardIndex >= 17
-        ) {
+        if (keyboardIndex < 0 || keyboardIndex >= 17) {
             return this.quantize(note);
         }
 
         const intervals = this.currentScale.intervals;
         const degree = keyboardIndex;
-        const octave = Math.floor(
-            degree / intervals.length
-        );
-        const scaleDegree =
-            degree % intervals.length;
+        const octave = Math.floor(degree / intervals.length);
+        const scaleDegree = degree % intervals.length;
 
         return (
-            ROOT_NOTE +
+            60 +
             octave * 12 +
             intervals[scaleDegree]
         );
@@ -215,7 +176,7 @@ export class ScaleManager {
 
     quantize(note) {
         const intervals = this.currentScale.intervals;
-        const relative = note - ROOT_NOTE;
+        const relative = note - 60;
         const octave = Math.floor(relative / 12);
 
         let nearestNote = null;
@@ -224,12 +185,11 @@ export class ScaleManager {
         for (const octaveOffset of [-1, 0, 1]) {
             for (const interval of intervals) {
                 const candidate =
-                    ROOT_NOTE +
+                    60 +
                     (octave + octaveOffset) * 12 +
                     interval;
 
-                const distance =
-                    Math.abs(candidate - note);
+                const distance = Math.abs(candidate - note);
 
                 if (distance < nearestDistance) {
                     nearestNote = candidate;
